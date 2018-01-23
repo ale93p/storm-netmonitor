@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask import request
 
 app = Flask(__name__)
@@ -9,10 +9,14 @@ def intex():
 
 @app.route("/test", methods=['GET'])
 def test():
-    print request.args["var"]
-    return True
+    var = request.args["var"]
+    return jsonify({'sent' : var})
 
-
+@app.route("/api/v0.1/network/insert", methods=['GET'])
+def networkInsert():
+    var = request.args["var"]
+    print var
+    return "Ok"
 
 if __name__ == "__main__":
     app.run()
