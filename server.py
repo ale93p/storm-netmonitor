@@ -9,7 +9,8 @@ def intex():
 
 @app.route("/test", methods=['GET'])
 def test():
-    return request.args["var"]
+    print request.args["var"]
+    return True
 
 
 
