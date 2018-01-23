@@ -1,10 +1,15 @@
 from flask import Flask
+from flask import request
+
 app = Flask(__name__)
 
-@app.route("/write", methods = ['GET'])
-def write():
-    return "Hello World!"
+@app.route("/")
+def intex():
+    return "Index page of netmonitor"
 
+@app.route("/test", methods=['GET'])
+def test():
+    return request.args["var"]
 
 
 
