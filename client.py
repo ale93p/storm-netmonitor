@@ -37,6 +37,6 @@ if __name__ == "__main__":
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
     for probe in tcpprobe:
-        p = tcprobe.ProbeParser(probe)
+        p = tcpprobe.ProbeParser(probe)
         if p.sp == 3306 or p.dp == 3306:
             print(probe)
