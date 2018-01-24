@@ -1,4 +1,4 @@
-# netmonitor for Storm#
+# netmonitor for Storm #
 
 netmonitor for Storm helps you to collect network statistics from your Storm cluster
 
@@ -6,13 +6,15 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
 
 * Python 3.x
 * [Flask](http://flask.pocoo.org/) on server
-```
-sudo pip3 install flask
-```
+
+   ```
+   sudo pip3 install flask
+   ```
 * `requests` module on client
-```
-sudo pip3 install requests
-```
+
+   ```
+   sudo pip3 install requests
+   ```
 
 ### Features ###
 
@@ -21,17 +23,17 @@ The module `tcpprobe.py` implements a class that parse a packet line generated b
 
 | Variable | Description |
 | --- | --- |
-| ts | Time in seconds |
-| sh | Source address |
-| sp | Source port |
-| rh | Destination address |
-| dp | Destination port |
-| by | Bytes in packet |
-| ns | Next send sequence # |
-| us | Unacknowledged sequence # |
-| cw | Congestion window |
-| ss | Slow start threshold |
-| sw | Send window |
+| `ts` | Time in seconds |
+| `sh` | Source address |
+| `sp` | Source port |
+| `rh` | Destination address |
+| `dp` | Destination port |
+| `by` | Bytes in packet |
+| `ns` | Next send sequence # |
+| `us` | Unacknowledged sequence # |
+| `cw` | Congestion window |
+| `ss` | Slow start threshold |
+| `sw` | Send window |
 
 #### Client-Server Architecture ####
 
