@@ -26,7 +26,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     serverAddress = args.server_addr
-    if options.server_port:
+    if args.server_port:
         serverPort = args.server_port
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
