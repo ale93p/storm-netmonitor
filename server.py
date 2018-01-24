@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask import request
-from optparse import OptionParser
+import argparse
 
 app = Flask(__name__)
 
@@ -35,12 +35,8 @@ def networkInsert():
     return "Ok"
 
 if __name__ == "__main__":
-    usage = "usage: %prog [options]"
-    parser = OptionParser(usage=usage)
-    parser.add_option("-p", "--port", dest="port", help="specify listening port")
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")
+    parser.add_argument("-p", "--port", dest="port", type=int, help="specify listening port", default=5000)
+    args = parser.parse_args()
 
-    if not options.port:
-        app.run(host='0.0.0.0')
-    else:
-        app.run(host='0.0.0.0', port=int(options.port))
+    app.run(host='0.0.0.0', port=args.port)
