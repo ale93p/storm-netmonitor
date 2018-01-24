@@ -16,11 +16,19 @@ pip3 install flask
 
 ### How to run it ###
 
-* on server, go to netmonitor folder and:
+#### Server ####
+Go to netmonitor folder and run:
 ```
 python3 server.py
 ```
-* on clients, run:
+#### Clients ####
+_on each client_
+First, [tcpprobe](https://wiki.linuxfoundation.org/networking/tcpprobe) have to be configured on(as _sudo_):
+```
+# mod_probe -r tcp_probe
+# mod_prbe tcp_probe port=0 full=1
+```
+Then, go to netmonitor folder and run:
 ```
 python3 client.py
 ```
