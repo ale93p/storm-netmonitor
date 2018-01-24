@@ -59,10 +59,10 @@ _on each client_:
 
 1. First, tcp_probe have to be configured on(as _sudo_):
     
-    ```bash
-    \# modprobe -r tcp_probe
-    \# modprobe tcp_probe port=0 full=1
-    \# chmod 444 /proc/net/tcpprobe
+    ```shell
+    # modprobe -r tcp_probe
+    # modprobe tcp_probe port=0 full=1
+    # chmod 444 /proc/net/tcpprobe
     ```
 
 2. Then, go to netmonitor folder and run:
