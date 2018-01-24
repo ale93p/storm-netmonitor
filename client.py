@@ -2,9 +2,14 @@ import requests
 import json
 import time
 import argparse
+import tcpprobe
 
 serverAddress = "127.0.0.1"
 serverPort = "5000"
+
+# stormConfigurations
+# TODO: get them from configuration file
+stormSlots = range[6700,6710]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
@@ -30,6 +35,9 @@ if __name__ == "__main__":
         serverPort = args.server_port
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
-    loglines = readTcpProbe(tcpProbeFile)
-    for line in loglines:
-        print(line)
+    tcpprobe = readTcpProbe(tcpProbeFile)
+    for probe in tcpprobe:
+        if filter(probe):
+            p = tcprobe.ProbeParser(probe)
+            if p.sp == 3306 or p.dp == 3306:
+                print(probe)
