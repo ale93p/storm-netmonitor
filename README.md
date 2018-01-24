@@ -51,8 +51,8 @@ python3 server.py
 _on each client_
 First, tcp_probe have to be configured on(as _sudo_):
 ```
-# mod_probe -r tcp_probe
-# mod_prbe tcp_probe port=0 full=1
+# modprobe -r tcp_probe
+# modprobe tcp_probe port=0 full=1
 # chmod 444 /proc/net/tcpprobe
 ```
 Then, go to netmonitor folder and run:
