@@ -1,10 +1,14 @@
-# netmonitor #
+# netmonitor for Storm#
 
-This README would normally document whatever steps are necessary to get your application up and running.
+netmonitor for Storm helps you to collect network statistics from your Storm cluster
 
 ### Dependencies ###
 
-* Flask 
+* Python 3.x
+* [Flask]{http://flask.pocoo.org/} on server
+```
+pip3 install flask
+```
 
 ### Features ###
 
@@ -12,7 +16,12 @@ This README would normally document whatever steps are necessary to get your app
 
 ### How to run it ###
 
-* go to netmonitor folder and:
-	python netmonitor.py
-	
-* access it from the web
+* on server, go to netmonitor folder and:
+```
+python3 server.py
+```
+* on clients, run:
+```
+python3 client.py
+```
+* or you can access it from the web, through REST APIs
