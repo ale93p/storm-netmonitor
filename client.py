@@ -15,15 +15,6 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
-def readTcpProbe(file):
-    file.seek(0,2)
-    while True:
-        line = file.readline()
-        if not line:
-            time.sleep(0.1)
-            continue
-        yield line
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
@@ -38,5 +29,6 @@ if __name__ == "__main__":
     tcpprobe = readTcpProbe(tcpProbeFile)
     for probe in tcpprobe:
         p = ProbeParser(probe)
-        if p.sp == 3306 or p.dp == 3306:
-            print(probe)
+        if p.sp in stormSlots or p.dp in stormSlots:
+
+# TODO: filter data a aggregate it, find a structure to do so!
