@@ -16,7 +16,8 @@ sudo pip3 install requests
 
 ### Features ###
 
-* Nothing at the moment
+* Server prints received data
+* Client sends dummy data
 
 ### How to run it ###
 
