@@ -5,7 +5,7 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
 ### Dependencies ###
 
 * Python 3.x
-* [Flask]{http://flask.pocoo.org/} on server
+* [Flask](http://flask.pocoo.org/) on server
 ```
 pip3 install flask
 ```
