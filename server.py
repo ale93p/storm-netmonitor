@@ -28,6 +28,7 @@ def networkInsert():
         bts = request.args["bytes"]
     
     except:
+        print ("[ERROR] Wrong API request")
         return "ERROR"
 
     print ("[DEBUG] Received from client: (",ts," ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)")
