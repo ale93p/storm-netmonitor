@@ -9,7 +9,7 @@ serverPort = "5000"
 
 # stormConfigurations
 # TODO: get them from configuration file
-stormSlots = range[6700,6710]
+stormSlots = range(6700,6710)
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
