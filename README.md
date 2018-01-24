@@ -7,7 +7,11 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
 * Python 3.x
 * [Flask](http://flask.pocoo.org/) on server
 ```
-pip3 install flask
+sudo pip3 install flask
+```
+* `requests` module on client
+```
+sudo pip3 install requests
 ```
 
 ### Features ###
@@ -30,6 +34,6 @@ First, [tcpprobe](https://wiki.linuxfoundation.org/networking/tcpprobe) have to 
 ```
 Then, go to netmonitor folder and run:
 ```
-python3 client.py
+python3 client.py server_address
 ```
 * or you can access it from the web, through REST APIs
