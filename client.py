@@ -2,8 +2,8 @@ import requests
 import json
 import time
 import argparse
-import tcpprobe
-
+from tcpprobe import ProbeParser
+ 
 serverAddress = "127.0.0.1"
 serverPort = "5000"
 
