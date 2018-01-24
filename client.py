@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port", default="5000")
     args = parser.parse_args()
 
-    serverAddress = args.server_attr
+    serverAddress = args.server_addr
     if options.server_port:
         serverPort = args.server_port
 
