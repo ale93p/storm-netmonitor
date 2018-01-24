@@ -32,6 +32,7 @@ First, [tcpprobe](https://wiki.linuxfoundation.org/networking/tcpprobe) have to 
 ```
 # mod_probe -r tcp_probe
 # mod_prbe tcp_probe port=0 full=1
+# chmod 444 /proc/net/tcpprobe
 ```
 Then, go to netmonitor folder and run:
 ```
