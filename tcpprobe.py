@@ -10,7 +10,7 @@ class ProbeParser:
        self.dp = self.getPort(splitted[2])
        self.by = int(splitted[3])
        
-    def.getAddress(app):
+    def getAddress(app):
         return app.rsplit(":",1)[0]
 
     def getPort(app):
