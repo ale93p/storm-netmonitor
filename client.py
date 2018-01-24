@@ -32,4 +32,4 @@ if __name__ == "__main__":
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     loglines = readTcpProbe(tcpProbeFile)
     for line in loglines:
-        print line,
+        print(line)
