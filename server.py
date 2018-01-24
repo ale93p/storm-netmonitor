@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from flask import request
+from optparse import OptionParser
 
 app = Flask(__name__)
 
@@ -30,8 +31,15 @@ def networkInsert():
         return "ERROR"
 
     print ("[DEBUG] Received from client: (",ts," ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)")
-    return True
+    return "Ok"
 
 if __name__ == "__main__":
-    app.run()
+    usage = "usage: %prog [options]"
+    parser = OptionParser(usage=usage)
+    parser.add_option("-p", "--port", dest="port", help="specify listening port")
+    (options, args) = parser.parse_args()
 
+    if not options.port:
+        app.run(host='0.0.0.0')
+    else:
+        app.run(host='0.0.0.0', port=int(options.port))
