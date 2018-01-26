@@ -11,8 +11,6 @@ from tcpprobe import ProbeAggregator
 stormSlots = [5001,5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
-    print(serverAddress)
-    print(serverPort)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
@@ -34,8 +32,8 @@ if __name__ == "__main__":
 
     print(" * Running in DEBUG mode * ") if args.debug else None
 
-    serverAddress = args.server_addr
-    serverPort = args.server_port if args.server_port else "5000"
+    serverAddress = args.server_addr[0]
+    serverPort = args.server_port[0] if args.server_port else '5000'
     
     trace = {}
     start_interval = None
