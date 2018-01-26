@@ -11,7 +11,7 @@ serverPort = "5000"
 # stormConfigurations
 # TODO: get them from storm configuration file
 # stormSlots = range(6700,6710)
-stormSlots = [5002,5003]
+stormSlots = [5001,5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
@@ -32,6 +32,8 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port", default="5000")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
+
+    print(" * Running in DEBUG mode * ") if args.debug else None
 
     serverAddress = args.server_addr
     if args.server_port:
