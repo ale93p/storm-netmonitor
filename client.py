@@ -27,7 +27,7 @@ def readTcpProbe(file):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
-    parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port", default="5000")
+    parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -35,6 +35,7 @@ if __name__ == "__main__":
 
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
+    print(serverPort)
     
     trace = {}
     start_interval = None
