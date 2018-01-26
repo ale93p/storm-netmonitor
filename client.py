@@ -9,8 +9,9 @@ serverAddress = "127.0.0.1"
 serverPort = "5000"
 
 # stormConfigurations
-# TODO: get them from configuration file
-stormSlots = range(6700,6710)
+# TODO: get them from storm configuration file
+# stormSlots = range(6700,6710)
+stormSlots = [5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
@@ -40,6 +41,7 @@ if __name__ == "__main__":
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
+
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
