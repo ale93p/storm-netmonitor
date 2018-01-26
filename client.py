@@ -41,6 +41,7 @@ if __name__ == "__main__":
     
     trace = {}
     start_interval = None
+    init_interval = True
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
@@ -57,10 +58,11 @@ if __name__ == "__main__":
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
-        if len(trace) == 1: 
+        if len(trace) > 1 and init_interval: 
             start_interval = time.time()
+            init_interval = not init_interval
 
-        if start_interval and time.time() - start_interval >= 10:
+        if not init_interval and time.time() - start_interval >= 10:
             start_interval = time.time()
             print("[DEBUG] Sending data at ", start_interval) if args.debug else None
             for key in trace:
