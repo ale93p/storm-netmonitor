@@ -11,7 +11,6 @@ from tcpprobe import ProbeAggregator
 stormSlots = [5001,5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
-    print(serverPort)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
@@ -48,7 +47,6 @@ if __name__ == "__main__":
         
         p = ProbeParser(probe)
         if p.sp in stormSlots or p.dp in stormSlots:
-            # print("[DEBUG] ", probe) if args.debug else None
             
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
@@ -66,5 +64,5 @@ if __name__ == "__main__":
             for key in trace:
                 res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
                 print("[DEBUG] Server response:",res) if args.debug else None
-                trace[key].reset()
-        
+                # trace[key].reset() # this?
+            trace = {} # or this?
