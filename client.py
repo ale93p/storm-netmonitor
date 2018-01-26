@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port", default="5000")
+    parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
     serverAddress = args.server_addr
@@ -46,14 +47,19 @@ if __name__ == "__main__":
         
         p = ProbeParser(probe)
         if p.sp in stormSlots or p.dp in stormSlots:
+            print("[DEBUG] ", probe) if args.debug else None
+            
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
+        
+
         time_now = time.time()
         if (time_now - start_interval >= 10):
+            print("[DEBUG] Sending data at ", time_now) if args.debug else None
             start_interval = time_now
             for key in trace:
                 networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
