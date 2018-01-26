@@ -55,14 +55,12 @@ if __name__ == "__main__":
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
-        
-
-        time_now = time.time()
-        if (time_now - start_interval) >= 10 and len(trace) > 0:
-            print("[DEBUG] Sending data at ", time_now) if args.debug else None
-            start_interval = time_now
-            for key in trace:
-                res = networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
-                print("[DEBUG] Server response:",res) if args.debug else None
-                t[key].reset()
+        if time.time() - start_interval >= 10:
+            start_interval = time.time()
+            if len(trace) > 0:
+                print("[DEBUG] Sending data at ", start_interval) if args.debug else None
+                for key in trace:
+                    res = networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                    print("[DEBUG] Server response:",res) if args.debug else None
+                    t[key].reset()
         
