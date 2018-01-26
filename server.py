@@ -31,12 +31,13 @@ def networkInsert():
         print ("[ERROR] Wrong API request")
         return "ERROR"
 
-    print ("[DEBUG] Received from client: (",ts," ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)")
+    print ("[VERBOSE] Received from client: (",ts," ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)") if args.verbose else None
     return "Ok"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")
     parser.add_argument("-p", "--port", dest="port", type=int, help="specify listening port", default=5000)
+    parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
     app.run(host='0.0.0.0', port=args.port)
