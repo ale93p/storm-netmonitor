@@ -40,7 +40,6 @@ if __name__ == "__main__":
         serverPort = args.server_port
     
     trace = {}
-    start_interval = time.time()
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
@@ -57,12 +56,13 @@ if __name__ == "__main__":
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
-        if time.time() - start_interval >= 10:
+        start_interval = time.time() if len(trace) == 1 else None
+
+        if start_interval and time.time() - start_interval >= 10:
             start_interval = time.time()
-            if len(trace) > 0:
-                print("[DEBUG] Sending data at ", start_interval) if args.debug else None
-                for key in trace:
-                    res = networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
-                    print("[DEBUG] Server response:",res) if args.debug else None
-                    t[key].reset()
+            print("[DEBUG] Sending data at ", start_interval) if args.debug else None
+            for key in trace:
+                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                print("[DEBUG] Server response:",res) if args.debug else None
+                t[key].reset()
         
