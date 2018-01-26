@@ -40,6 +40,7 @@ if __name__ == "__main__":
         serverPort = args.server_port
     
     trace = {}
+    start_interval = None
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
