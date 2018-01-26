@@ -49,7 +49,7 @@ if __name__ == "__main__":
         
         p = ProbeParser(probe)
         if p.sp in stormSlots or p.dp in stormSlots:
-            print("[DEBUG] ", probe) if args.debug else None
+            # print("[DEBUG] ", probe) if args.debug else None
             
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
