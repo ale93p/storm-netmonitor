@@ -22,7 +22,7 @@ class ProbeParser:
         return int(app.rsplit(":",1)[1])
 
 class ProbeAggregator:
-    def __init__(slef):
+    def __init__(self):
         self.pkts = 0
         self.bytes = 0
 
@@ -30,6 +30,6 @@ class ProbeAggregator:
         self.pkts += 1
         self.bytes += by
 
-    def reset():
+    def reset(self):
         self.pkts = 0
         self.bytes = 0
