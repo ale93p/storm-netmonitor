@@ -20,3 +20,16 @@ class ProbeParser:
 
     def getPort(self, app):
         return int(app.rsplit(":",1)[1])
+
+class ProbeAggregator:
+    def __init__(slef):
+        self.pkts = 0
+        self.bytes = 0
+
+    def addPacket(self, by):
+        self.pkts += 1
+        self.bytes += by
+
+    def reset():
+        self.pkts = 0
+        self.bytes = 0
