@@ -58,10 +58,11 @@ if __name__ == "__main__":
         
 
         time_now = time.time()
-        if (time_now - start_interval >= 10):
+        if (time_now - start_interval) >= 10 and len(trace) > 0:
             print("[DEBUG] Sending data at ", time_now) if args.debug else None
             start_interval = time_now
             for key in trace:
-                networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                res = networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                print("[DEBUG] Server response:",res) if args.debug else None
                 t[key].reset()
         
