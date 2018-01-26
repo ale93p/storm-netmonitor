@@ -41,7 +41,7 @@ The module `tcpprobe.py` implements a class that parse a packet line generated b
 
 TODOs are in _italic_
 
-* The clients obtain data through tcpprobe, _aggregates it_, and _sends it_ to the server each 10 seconds
+* The clients obtain data through tcpprobe, aggregates it, and sends it to the server each 10 seconds
 * The server receives data from the clients, through ReST APIs, and _store_ them in a csv file 
 
 ### How to run it ###
