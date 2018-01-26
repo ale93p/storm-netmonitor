@@ -58,7 +58,7 @@ if __name__ == "__main__":
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
-        if len(trace) > 1 and init_interval: 
+        if len(trace) >= 1 and init_interval: 
             start_interval = time.time()
             init_interval = not init_interval
 
