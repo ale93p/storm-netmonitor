@@ -66,7 +66,7 @@ if __name__ == "__main__":
             start_interval = time.time()
             print("[DEBUG] Sending data at ", start_interval) if args.debug else None
             for key in trace:
-                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
                 print("[DEBUG] Server response:",res) if args.debug else None
                 t[key].reset()
         
