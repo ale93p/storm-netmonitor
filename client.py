@@ -11,6 +11,7 @@ from tcpprobe import ProbeAggregator
 stormSlots = [5001,5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
+    print(serverPort)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
