@@ -6,7 +6,7 @@ class ProbeParser:
        self.ts = float(splitted[0])             # Time in seconds
        self.sh = self.getAddress(splitted[1])   # Source address
        self.sp = self.getPort(splitted[1])      # Source port
-       self.rh = self.getAddress(splitted[2])   # Destination address
+       self.dh = self.getAddress(splitted[2])   # Destination address
        self.dp = self.getPort(splitted[2])      # Destination port
        self.by = int(splitted[3])               # Bytes in packet
        self.ns = splitted[4]                    # Next send sequence nbr
