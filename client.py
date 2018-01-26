@@ -66,5 +66,5 @@ if __name__ == "__main__":
             for key in trace:
                 res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
                 print("[DEBUG] Server response:",res) if args.debug else None
-                t[key].reset()
+                trace[key].reset()
         
