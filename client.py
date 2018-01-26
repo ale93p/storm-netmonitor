@@ -3,6 +3,7 @@ import json
 import time
 import argparse
 from tcpprobe import ProbeParser
+from tcpprobe import ProbeAggregator
  
 serverAddress = "127.0.0.1"
 serverPort = "5000"
@@ -24,11 +25,26 @@ if __name__ == "__main__":
     serverAddress = args.server_addr
     if args.server_port:
         serverPort = args.server_port
+    
+    trace = {}
+    start_interval = time.time()
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
     for probe in tcpprobe:
+        
         p = ProbeParser(probe)
         if p.sp in stormSlots or p.dp in stormSlots:
-
-# TODO: filter data a aggregate it, find a structure to do so!
+            if (p.sh, p.sp, p.dh, p.dp) not in trace:
+                trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
+                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
+            else:
+                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
+        
+        time_now = time.time()
+        if (time_now - start_interval >= 10):
+            start_interval = time_now
+            for key in trace:
+                networkInsert(time_now, key[0], key[1], key[2], key[3], t[key].pkts, t[key].bytes)
+                t[key].reset()
+        
