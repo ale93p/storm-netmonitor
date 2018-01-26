@@ -40,4 +40,6 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
+    print("Enabled verbose output") if args.verbose else None
+
     app.run(host='0.0.0.0', port=args.port)
