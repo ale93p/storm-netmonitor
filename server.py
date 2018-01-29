@@ -1,23 +1,26 @@
-from flask import Flask, jsonify, request, abort, render_template
+from flask import Flask, jsonify, request, abort, render_template, g
 import argparse
 import csv
 import os.path
 import time
+import sqlite3
 
-app = Flask(__name__)
 start_time = time.time()
 filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
+db_dir = 'database/netmonitor.db'
+schema_dir = 'database/schema.sql'
 
-@app.route("/")
-def status():
-    return render_template('layout.html')
+app = Flask(__name__)
+app.config.from_object(__name__)
+app.config.update(dict(
+    DATABASE=os.path.join(app.root_path, db_dir),
+    SECRET_KEY='development key',
+    USERNAME='admin',
+    PASSWORD='default'
+))
+app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
-@app.route("/test", methods=['GET'])
-def test():
-    var = request.args["var"]
-    return jsonify({'sent' : var})
-
-def writeToCsv(d):
+def writeToCsv(d): 
     title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
     if len(d) != len(title_row): raise Exception('Data lenght not matching')
     newfile = not os.path.isfile(filename)
@@ -26,44 +29,89 @@ def writeToCsv(d):
         if newfile: csvwriter.writerow(title_row)
         csvwriter.writerow(d)
 
+def getConnection(sa,sp,da,dp):
+    db = get_db()
+    query = 'select ID, client from connections where src_addr == \'' + sa + '\' and src_port == \'' + sp + '\' and dst_addr == \'' + da + '\' and dst_port == \'' + dp + '\''
+    cur = db.execute(query)    
+    r = list(cur.fetchall())
+    if len(r) < 1: return None
+    else: return r
+
+def insert_db(query):
+    db = get_db()
+    cur = db.execute(query)
+    db.commit()
+    return cur.lastrowid
+
+def connect_db():
+    """Connects to the specific database."""
+    rv = sqlite3.connect(app.config['DATABASE'])
+    rv.row_factory = sqlite3.Row
+    return rv
+
+def get_db():
+    """Opens a new database connection if there is none yet for the
+    current application context.
+    """
+    if not hasattr(g, 'sqlite_db'):
+        g.sqlite_db = connect_db()
+    return g.sqlite_db
+
+@app.teardown_appcontext
+def close_db(error):
+    """Closes the database again at the end of the request."""
+    if hasattr(g, 'sqlite_db'):
+        g.sqlite_db.close()
+
+def init_db():
+    db = get_db()
+    with app.open_resource(schema_dir, mode='r') as f:
+        db.cursor().executescript(f.read())
+    db.commit()
+
+@app.before_first_request
+def before():
+    init_db() if args.initdb else None
+
+@app.route("/")
+def status():
+    return render_template('layout.html')
+
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():
     try:
-        data = []
-
-        data.append(request.remote_addr)
-
-        data.append(request.args["ts"])
-
-        data.append(request.args["src_host"])
-        data.append(request.args["src_port"])
-
-        data.append(request.args["dst_host"])
-        data.append(request.args["dst_port"])
-
-        data.append(request.args["pkts"])
-        data.append(request.args["bytes"])
-    
+        client = request.remote_addr
+        ts = request.args["ts"]
+        src_host = request.args["src_host"]
+        src_port = request.args["src_port"]
+        dst_host = request.args["dst_host"]
+        dst_port = request.args["dst_port"]
+        pkts = request.args["pkts"]
+        bts = request.args["bytes"]
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-
-    print ("[VERBOSE] Received from client:",data) if args.verbose else None
+    print ("[VERBOSE] Received from ",client," at ",ts,": ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)", sep='') if args.verbose else None
     
-    try:
-        writeToCsv(data)
-    except Exception as e:
-        print(e)
-        abort(400)
+    c = getConnection(src_host, src_port, dst_host, dst_port)
+    if c and client != c[0][1]: pass
+    else:
+        if not c:
+            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + client + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
+            connId = insert_db(query)
+        else: connId = c[0][0]
+        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + ts + '\',\'' + pkts + '\',\'' + bts + '\')'
+        insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")
     parser.add_argument("-p", "--port", dest="port", type=int, help="specify listening port", default=5000)
     parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
+    parser.add_argument("--initdb", dest="initdb", help="initialize the database", action="store_true", default=False)
+    # parser.add_argument("-w", dest="csv", help="specify a csv file to store results", type=str) # TODO: write to csv file if selected
     args = parser.parse_args()
 
     print(" * Enabled verbose output * ") if args.verbose else None
