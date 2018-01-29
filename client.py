@@ -33,7 +33,6 @@ if __name__ == "__main__":
 
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
-    print(serverPort)
     
     trace = {}
     start_interval = None
