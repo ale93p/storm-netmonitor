@@ -20,7 +20,7 @@ def test():
 def writeToCsv(d):
     title_row = ['timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
     if len(d) != len(title_row): raise Exception('Data lenght not matching')
-    newfile = os.path.isfile(filename)
+    newfile = not os.path.isfile(filename)
     with open(filename, 'a', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         if newfile: csvwriter.writerow(title_row)
@@ -36,7 +36,7 @@ def networkInsert():
         data.append(request.args["src_port"])
 
         data.append(request.args["dst_host"])
-        data.append(dst_port = request.args["dst_port"])
+        data.append(request.args["dst_port"])
 
         data.append(request.args["pkts"])
         data.append(request.args["bytes"])
@@ -54,6 +54,7 @@ def networkInsert():
         abort(400)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
+    return "Ok"
 
 
 if __name__ == "__main__":
@@ -62,6 +63,6 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
-    print("Enabled verbose output") if args.verbose else None
+    print(" * Enabled verbose output * ") if args.verbose else None
 
     app.run(host='0.0.0.0', port=args.port)
