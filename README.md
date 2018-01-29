@@ -28,10 +28,8 @@ The module `tcpprobe.py` is used to manage data collected through [tcp_probe](ht
 
 #### Client-Server Architecture ####
 
-TODOs are in _italic_
-
 * The clients obtain data through tcpprobe, aggregates it, and sends it to the server each 10 seconds
-* The server receives data from the clients, through ReST APIs, and _store_ them in a csv file 
+* The server receives data from the clients, through ReST APIs, and store them in a local SQLite database (v0.2.0+)
 
 ### How to run it ###
 
@@ -59,5 +57,3 @@ _on each client_:
     ```
     $ python3 client.py server_address
     ```
-
-P.S.  The server can be accessed also directly through REST APIs
