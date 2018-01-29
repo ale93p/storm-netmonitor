@@ -7,7 +7,7 @@ import time
 
 app = Flask(__name__)
 start_time = time.time()
-filename = 'network_db_' + strftime("%d%m%y%H%M%s") + '.csv'
+filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 
 @app.route("/")
 def intex():
