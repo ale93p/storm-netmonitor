@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from flask import request
 import argparse
 import csv
-import isfile from os.path
+import os.path
 
 app = Flask(__name__)
 start_time = time.time()
@@ -20,9 +20,10 @@ def test():
 def writeToCsv(d):
     title_row = ['timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
     if len(d) != len(title_row): raise Exception('Data lenght not matching')
+    newfile = os.path.isfile(filename)
     with open(filename, 'a', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        if not isfile(filename): csvwriter.writerow(title_row)
+        if newfile: csvwriter.writerow(title_row)
         csvwriter.writerow(d)
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
