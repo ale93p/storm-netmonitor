@@ -37,6 +37,12 @@ def getConnection(sa,sp,da,dp):
     if len(r) < 1: return None
     else: return r
 
+def getSummary():
+    db = get_db()
+    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes from connections, probes where connections.ID == probes.connection group by probes.connection;'
+    cur = db.execute(query)
+    return cur.fetchall()
+
 def insert_db(query):
     db = get_db()
     cur = db.execute(query)
@@ -74,8 +80,13 @@ def before():
     init_db() if args.initdb else None
 
 @app.route("/")
-def status():
-    return render_template('layout.html')
+def connectionView():
+    connections = getSummary()
+    cons = []
+    for c in connections:
+        cons.append((c[0]+':'+c[1]+' -> '+c[2]+':'+c[3], c[4], c[5]))
+
+    return render_template('summary.html',connections=cons)
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():

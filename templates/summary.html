@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block body %}
+    <div style="overflow-x:auto;">
+      <table>
+        <tr>
+            <th>Connection</th><th>Packets</th><th>Data</th>
+        </tr>
+        {% for c in connections: %}
+            <tr>
+                <td><tt>{{ c[0] }}</tt></td><td>{{ c[1] }}</td><td>{{ c[2] }}</td>
+            </tr>
+        {% endfor %}
+      </table>
+    </div>
+{% endblock %}
