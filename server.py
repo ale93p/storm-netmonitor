@@ -37,8 +37,8 @@ def networkInsert():
         data.append(request.args["dst_host"])
         data.append(dst_port = request.args["dst_port"])
 
-        data.append(pkts = request.args["pkts"])
-        data.append(bts = request.args["bytes"])
+        data.append(request.args["pkts"])
+        data.append(request.args["bytes"])
     
     except:
         print ("[ERROR] Wrong API request")
