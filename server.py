@@ -18,7 +18,7 @@ def test():
     return jsonify({'sent' : var})
 
 def writeToCsv(d):
-    title_row = ['timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
+    title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
     if len(d) != len(title_row): raise Exception('Data lenght not matching')
     newfile = not os.path.isfile(filename)
     with open(filename, 'a', newline='') as csvfile:
@@ -30,6 +30,9 @@ def writeToCsv(d):
 def networkInsert():
     try:
         data = []
+
+        data.append(request.remote_addr)
+
         data.append(request.args["ts"])
 
         data.append(request.args["src_host"])
