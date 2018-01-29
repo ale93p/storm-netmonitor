@@ -1,8 +1,12 @@
 from flask import Flask, jsonify
 from flask import request
 import argparse
+import csv
+import isfile from os.path
 
 app = Flask(__name__)
+start_time = time.time()
+filename = 'network_db_' + strftime("%d%m%y%H%M%s") + '.csv'
 
 @app.route("/")
 def intex():
@@ -13,26 +17,43 @@ def test():
     var = request.args["var"]
     return jsonify({'sent' : var})
 
+def writeToCsv(d):
+    title_row = ['timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
+    if len(d) != len(title_row): raise Exception('Data lenght not matching')
+    with open(filename, 'a', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        if not isfile(filename): csvwriter.writerow(title_row)
+        csvwriter.writerow(d)
+
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():
     try:
-        ts = request.args["ts"]
+        data = []
+        data.append(request.args["ts"])
 
-        src_host = request.args["src_host"]
-        src_port = request.args["src_port"]
+        data.append(request.args["src_host"])
+        data.append(request.args["src_port"])
 
-        dst_host = request.args["dst_host"]
-        dst_port = request.args["dst_port"]
+        data.append(request.args["dst_host"])
+        data.append(dst_port = request.args["dst_port"])
 
-        pkts = request.args["pkts"]
-        bts = request.args["bytes"]
+        data.append(pkts = request.args["pkts"])
+        data.append(bts = request.args["bytes"])
     
     except:
         print ("[ERROR] Wrong API request")
-        return "ERROR"
+        abort(400)
 
-    print ("[VERBOSE] Received from client: (",ts," ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)") if args.verbose else None
-    return "Ok"
+    print ("[VERBOSE] Received from client:",data) if args.verbose else None
+    
+    try:
+        writeToCsv(data)
+    except Exception as e:
+        print(e)
+        abort(400)
+
+    print ("[VERBOSE] Data write success") if args.verbose else None
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")

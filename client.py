@@ -2,8 +2,7 @@ import requests
 import json
 import time
 import argparse
-from tcpprobe import ProbeParser
-from tcpprobe import ProbeAggregator
+from tcpprobe import ProbeParser, ProbeAggregator
 
 # stormConfigurations
 # TODO: get them from storm configuration file
