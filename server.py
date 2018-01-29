@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, abort, render_template
 import argparse
 import csv
 import os.path
@@ -9,8 +9,8 @@ start_time = time.time()
 filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 
 @app.route("/")
-def intex():
-    return "Index page of netmonitor"
+def status():
+    return render_template('layout.html')
 
 @app.route("/test", methods=['GET'])
 def test():
