@@ -3,6 +3,7 @@ import yaml
 import json
 import time
 import argparse
+from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
-    parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default='~/apache-storm-1.1.1/conf/storm.yaml')
+    parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.1.1/conf/storm.yaml')
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
