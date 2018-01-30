@@ -16,7 +16,7 @@ class ProbeParser:
        self.sw = int(splitted[8])               # Send window
     
     def getAddress(self, app): #app: address plus port
-        return app.rsplit(":",1)[0]
+        return app.rsplit(':',1)[0].rsplit(':',1)[-1][:-1]
 
     def getPort(self, app):
         return int(app.rsplit(":",1)[1])
