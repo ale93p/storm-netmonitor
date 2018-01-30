@@ -2,7 +2,7 @@
 import json
 import requests
 
-class stormCollector():
+class StormCollector():
     def __init__(self, api_addr, api_port = 8080):
         self.address = api_addr
         self.port = api_port

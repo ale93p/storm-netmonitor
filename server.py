@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request, abort, render_template, g
-from modules.stormapi import stormCollector
+from modules.stormapi import StormCollector
 import argparse
 import csv
 import os.path
@@ -98,7 +98,7 @@ def init_db():
 @app.before_first_request
 def init():
     init_db() if args.initdb else None
-    storm = stormCollector(nimbus_address)
+    storm = StormCollector(nimbus_address)
 
 @app.route("/")
 @app.route("/index")
