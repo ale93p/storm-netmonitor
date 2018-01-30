@@ -11,11 +11,13 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
      $ sudo pip3 install flask
      ```
 
-* `requests` module on client:
+* folloeing modules on client:
 
      ```
-     $ sudo pip3 install requests
+     $ sudo pip3 install module_name
      ```
+     - `requests`
+     - `yaml`
 
 ### Features ###
 
@@ -44,7 +46,7 @@ $ python3 server.py
 
 _on each client_:
 
-1. First, tcp_probe have to be configured on(as *_sudo_*):
+* First, tcp_probe have to be configured on(as *_sudo_*):
     
 ```
 # modprobe -r tcp_probe
@@ -52,7 +54,7 @@ _on each client_:
 # chmod 444 /proc/net/tcpprobe
 ```
 
-2. Then, go to netmonitor folder and run:
+* Then, go to netmonitor folder and run:
     
     ```
     $ python3 client.py server_address
