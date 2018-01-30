@@ -15,7 +15,7 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
   
   * requests: `$ sudo pip3 install requests`
   
-  * PyYAML: http://pyyaml.org/wiki/PyYAMLDocumentation
+  * PyYAML: [here](https://github.com/yaml/pyyaml)
 
 ### Features ###
 
