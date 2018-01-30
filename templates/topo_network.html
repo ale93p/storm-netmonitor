@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block body %}
+    <div style="overflow-x:auto;">
+      <table>
+        <tr>
+            <th>Connections</th><th>Packets</th><th>Data</th>
+        </tr>       
+        {% for t in topo_summary: %}
+            <tr>
+                <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td>
+            </tr>
+        {% else %}
+            <td colspan=3>Wrong Topology ID</td>
+        {% endfor %}
+    
+        </table>
+    </div>
+{% endblock %}
