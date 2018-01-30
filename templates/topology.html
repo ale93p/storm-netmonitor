@@ -3,11 +3,11 @@
     <div style="overflow-x:auto;">
       <table>
         <tr>
-            <th>Topologies</th><th>Workers</th><th>Executors</th>
+            <th>Topologies</th><th>Workers</th><th>Components</th><th>Executors</th>
         </tr>       
-        {% for t in topologies: %}
+        {% for t in topo_summary: %}
             <tr>
-                <td><tt>{{ c[0] }}</tt></td><td>{{ c[1] }}</td><td>{{ c[2] }}</td>
+                <td><a href='#'>{{ t[0] }}</a></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td><td>{{t[3] }}</td>
             </tr>
         {% else %}
             <td colspan=3>No active topology at the moment</td>

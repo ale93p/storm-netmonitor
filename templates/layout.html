@@ -4,7 +4,7 @@
 <div class="page">
   <h1>netmonitor for Storm</h1>
   <div class="metanav">
-    {% if request.path == '/' %}
+    {% if request.path in ['/','/conn_view','/index'] %}
       <a href="{{ url_for('topo_view') }}">Topology View</a>
     {% endif %}
     {% if request.path == '/topo_view' %}

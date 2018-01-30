@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, abort, render_template, g
+from modules.stormapi import stormCollector
 import argparse
 import csv
 import os.path
@@ -10,6 +11,8 @@ start_time = time.time()
 filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
+nimbus_address = 'sdn1.i3s.unice.fr'
+storm = None
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -93,12 +96,13 @@ def init_db():
     db.commit()
 
 @app.before_first_request
-def before():
+def init():
     init_db() if args.initdb else None
+    storm = stormCollector(nimbus_address)
 
-@app.route("/conn_view")
-@app.route("/index")
 @app.route("/")
+@app.route("/index")
+@app.route("/conn_view")
 def conn_view():
     connections = getSummary()
     cons = []
@@ -110,7 +114,12 @@ def conn_view():
 
 @app.route('/topo_view')
 def topo_view():
-    return render_template('topology.html')
+    storm.reload()
+    topoSummary = []
+    for topo in storm.topologies:
+        topoSummary.append((storm.topologies[topo], len(storm.workers[topo]), len(storm.components[topo]), storm.executorsLength(storm.executors[topo])))
+    print(topoSummary)
+    return render_template('topology.html', topo_summary=topoSummary)
 
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
