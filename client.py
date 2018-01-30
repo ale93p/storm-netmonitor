@@ -1,13 +1,9 @@
 import requests
+import yaml
 import json
 import time
 import argparse
 from modules.tcpprobe import ProbeParser, ProbeAggregator
-
-# stormConfigurations
-# TODO: get them from storm configuration file
-# stormSlots = range(6700,6710)
-stormSlots = [5001,5002,5003]
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
@@ -22,10 +18,16 @@ def readTcpProbe(file):
             continue
         yield line
 
+def getStormSlots(conf):
+    f = open(conf, 'r')
+    return yaml.load(f)['supervisor.slots.ports']
+    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
+    parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default='~/apache-storm-1.1.1/conf/storm.yaml')
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -37,6 +39,8 @@ if __name__ == "__main__":
     trace = {}
     start_interval = None
     init_interval = True
+
+    stormSlots = getStormSlots(args.storm_conf)
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
