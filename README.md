@@ -12,13 +12,10 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
      ```
 
 * folloeing modules on client:
-
-     ```
-     $ sudo pip3 install module_name
-     ```
-     
-     * `requests`
-     * `yaml`
+  
+  * requests: `$ sudo pip3 install requests`
+  
+  * PyYAML: http://pyyaml.org/wiki/PyYAMLDocumentation
 
 ### Features ###
 
