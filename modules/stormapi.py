@@ -77,13 +77,17 @@ class StormCollector():
     def getWorkersAddr(self, topoId):
         addr = []
         for worker in self.workers[topoId]:
-            addr.append(worker[0])
+            ip = self.getIpByName(worker[0])
+            if ip not in addr: addr.append(ip)
+        addr.append('127.0.0.1')
+        addr.append('127.0.1.1')
         return tuple(addr)
     
     def getWorkersPort(self, topoId):
         ports = []
         for worker in self.workers[topoId]:
-            ports.append(worker[1])
+            port = worker[1]
+            if port not in ports: ports.append(str(port))
         return tuple(ports)
 
     def getTopologyComponents(self, topoId):
@@ -125,6 +129,9 @@ class StormCollector():
         for node in self.supervisors:
             if socket.gethostbyname(node) == ip: return node
             else: return None
+    
+    def getIpByName(self, name):
+            return socket.gethostbyname(name)
 
     def getMetrics(self, baseUrl, topoId):
         """Returns number of tuples executed so far"""

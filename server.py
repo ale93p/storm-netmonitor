@@ -13,6 +13,8 @@ filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
 nimbus_address = 'sdn1.i3s.unice.fr'
+localhost = ['127.0.0.1','127.0.1.1'] 
+
 
 storm = StormCollector(nimbus_address)
 
@@ -61,16 +63,18 @@ def getConnection(sa,sp,da,dp):
 
 def getSummary():
     db = get_db()
-    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes;'
+    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes desc;'
     cur = db.execute(query)
     return cur.fetchall()
 
 def getTopoNetwork(addrs, ports):
-    db = get_db(addrs, ports)
+    db = get_db()
     query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes \
         from connections, probes where connections.ID == probes.connection and \
-        ((src_addr in ' + addrs + ' and src_port in ' + ports + ') or (dst_addr in ' + addrs + ' and dst_port in ' + ports + ')) \
-        order by bytes'
+        ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
+        group by probes.connection \
+        order by bytes desc'
+    print(query)
     cur = db.execute(query)
     return cur.fetchall()
 
@@ -142,12 +146,16 @@ def topo_network():
 
         net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
         for row in net:
-            sourceWorker = getNameByIp(row[1])
-            if not sourceWorker: sourceWorker = row[0]
-            destinationWorker = getNameByIp(row[3])
-            if not destinationWorker: destinationWorker = row[0]
-            connString = sourceWorker + ':' + row[2] + ' -> ' + destinationWorker + ':' + row[4]
-            connections.append(connString, humansize(int(row[5], False)), humansize(int(row[6])))
+
+            sourceWorker = storm.getNameByIp(row[1])
+            if not sourceWorker: sourceWorker = storm.getNameByIp(row[0])
+            destinationWorker = storm.getNameByIp(row[3])
+            if not destinationWorker: destinationWorker = storm.getNameByIp(row[0])
+
+            connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
+            
+
+            connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6]))))
     
     return render_template('topo_network.html', connections=connections)
 

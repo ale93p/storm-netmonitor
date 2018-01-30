@@ -5,7 +5,7 @@
         <tr>
             <th>Connections</th><th>Packets</th><th>Data</th>
         </tr>       
-        {% for t in topo_summary: %}
+        {% for t in connections: %}
             <tr>
                 <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td>
             </tr>
