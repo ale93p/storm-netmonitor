@@ -59,7 +59,7 @@ def getConnection(sa,sp,da,dp):
 
 def getSummary():
     db = get_db()
-    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by src_addr, src_port, dst_addr, dst_port;'
+    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytest;'
     cur = db.execute(query)
     return cur.fetchall()
 
