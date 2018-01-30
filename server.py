@@ -152,13 +152,4 @@ if __name__ == "__main__":
 
     print(" * Enabled verbose output * ") if args.verbose else None
 
-    extra_dirs = ['static','templates',]
-    extra_files = extra_dirs[:]
-    for extra_dir in extra_dirs:
-        for dirname, dirs, files in os.walk(extra_dir):
-            for filename in files:
-                filename = os.path.join(dirname, filename)
-                if os.path.isfile(filename):
-                    extra_files.append(filename)
-
-    app.run(host='0.0.0.0', port=args.port, extra_files=extra_files)
+    app.run(host='0.0.0.0', port=args.port)
