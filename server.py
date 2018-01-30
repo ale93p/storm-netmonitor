@@ -2,8 +2,9 @@ from flask import Flask, jsonify, request, abort, render_template, g
 import argparse
 import csv
 import os.path
-import time
+import time, datetime
 import sqlite3
+
 
 start_time = time.time()
 filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
@@ -19,6 +20,22 @@ app.config.update(dict(
     PASSWORD='default'
 ))
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+
+def humansize(n, bytes=True):
+    if bytes:
+        suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+        div = 1024.
+    else:
+        suffixes = ['', 'K', 'M', 'B', 'T']
+        div = 1000.
+
+    i = 0
+    while n >= div and i < len(suffixes)-1:
+        n /= div
+        i += 1
+    f = ('%.2f' % n).rstrip('0').rstrip('.')
+
+    return '%s %s' % (f, suffixes[i])
 
 def writeToCsv(d): 
     title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
@@ -39,7 +56,7 @@ def getConnection(sa,sp,da,dp):
 
 def getSummary():
     db = get_db()
-    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes from connections, probes where connections.ID == probes.connection group by probes.connection;'
+    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by src_addr, src_port, dst_addr, dst_port;'
     cur = db.execute(query)
     return cur.fetchall()
 
@@ -79,20 +96,28 @@ def init_db():
 def before():
     init_db() if args.initdb else None
 
+@app.route("/conn_view")
+@app.route("/index")
 @app.route("/")
-def connectionView():
+def conn_view():
     connections = getSummary()
     cons = []
     for c in connections:
-        cons.append((c[0]+':'+c[1]+' -> '+c[2]+':'+c[3], c[4], c[5]))
-
+        ts = float(c[6])
+        if time.time() - ts < 60*60:
+            cons.append((c[0]+':'+c[1]+' -> '+c[2]+':'+c[3], humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
     return render_template('summary.html',connections=cons)
+
+@app.route('/topo_view')
+def topo_view():
+    return render_template('topology.html')
+
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():
     try:
         client = request.remote_addr
-        ts = request.args["ts"]
+        ts = time.time()
         src_host = request.args["src_host"]
         src_port = request.args["src_port"]
         dst_host = request.args["dst_host"]
@@ -102,7 +127,7 @@ def networkInsert():
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-    print ("[VERBOSE] Received from ",client," at ",ts,": ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)", sep='') if args.verbose else None
+    print ("[VERBOSE] Received from ",client," at ",str(ts),": ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)", sep='') if args.verbose else None
     
     c = getConnection(src_host, src_port, dst_host, dst_port)
     if c and client != c[0][1]: pass
@@ -111,7 +136,7 @@ def networkInsert():
             query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + client + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
             connId = insert_db(query)
         else: connId = c[0][0]
-        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + ts + '\',\'' + pkts + '\',\'' + bts + '\')'
+        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
         insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
@@ -127,4 +152,13 @@ if __name__ == "__main__":
 
     print(" * Enabled verbose output * ") if args.verbose else None
 
-    app.run(host='0.0.0.0', port=args.port)
+    extra_dirs = ['static','templates',]
+    extra_files = extra_dirs[:]
+    for extra_dir in extra_dirs:
+        for dirname, dirs, files in os.walk(extra_dir):
+            for filename in files:
+                filename = os.path.join(dirname, filename)
+                if os.path.isfile(filename):
+                    extra_files.append(filename)
+
+    app.run(host='0.0.0.0', port=args.port, extra_files=extra_files)

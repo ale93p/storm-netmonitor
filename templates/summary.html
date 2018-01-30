@@ -3,12 +3,14 @@
     <div style="overflow-x:auto;">
       <table>
         <tr>
-            <th>Connection</th><th>Packets</th><th>Data</th>
+            <th>Connections</th><th>Packets</th><th>Data</th><th>Last</th>
         </tr>
         {% for c in connections: %}
             <tr>
-                <td><tt>{{ c[0] }}</tt></td><td>{{ c[1] }}</td><td>{{ c[2] }}</td>
+                <td><tt>{{ c[0] }}</tt></td><td>{{ c[1] }}</td><td>{{ c[2] }}</td><td>{{ c[3] }}</td>
             </tr>
+        {% else %}
+            <td colspan=4>No active connections in the last hour</td>
         {% endfor %}
       </table>
     </div>
