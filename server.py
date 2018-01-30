@@ -3,6 +3,7 @@ from modules.stormapi import StormCollector
 import argparse
 import csv
 import os.path
+import socket
 import time, datetime
 import sqlite3
 
@@ -12,7 +13,8 @@ filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
 nimbus_address = 'sdn1.i3s.unice.fr'
-storm = None
+
+storm = StormCollector(nimbus_address)
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -59,7 +61,16 @@ def getConnection(sa,sp,da,dp):
 
 def getSummary():
     db = get_db()
-    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytest;'
+    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes;'
+    cur = db.execute(query)
+    return cur.fetchall()
+
+def getTopoNetwork(addrs, ports):
+    db = get_db(addrs, ports)
+    query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes \
+        from connections, probes where connections.ID == probes.connection and \
+        ((src_addr in ' + addrs + ' and src_port in ' + ports + ') or (dst_addr in ' + addrs + ' and dst_port in ' + ports + ')) \
+        order by bytes'
     cur = db.execute(query)
     return cur.fetchall()
 
@@ -98,7 +109,7 @@ def init_db():
 @app.before_first_request
 def init():
     init_db() if args.initdb else None
-    storm = StormCollector(nimbus_address)
+    
 
 @app.route("/")
 @app.route("/index")
@@ -109,7 +120,8 @@ def conn_view():
     for c in connections:
         ts = float(c[6])
         if time.time() - ts < 60*60:
-            cons.append((c[0]+':'+c[1]+' -> '+c[2]+':'+c[3], humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
+            connString = c[0]+':'+c[1]+' -> '+c[2]+':'+c[3]
+            cons.append((connString, humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
     return render_template('summary.html',connections=cons)
 
 @app.route('/topo_view')
@@ -117,10 +129,27 @@ def topo_view():
     storm.reload()
     topoSummary = []
     for topo in storm.topologies:
-        topoSummary.append((storm.topologies[topo], len(storm.workers[topo]), len(storm.components[topo]), storm.executorsLength(storm.executors[topo])))
+        topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), len(storm.components[topo]), storm.executorsLength(storm.executors[topo])))
     print(topoSummary)
     return render_template('topology.html', topo_summary=topoSummary)
 
+@app.route('/topo_view/network', methods=['GET'])
+def topo_network():
+    connections = []
+    if request.args['id']:
+        topoId = request.args['id']
+        storm.reload()
+
+        net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
+        for row in net:
+            sourceWorker = getNameByIp(row[1])
+            if not sourceWorker: sourceWorker = row[0]
+            destinationWorker = getNameByIp(row[3])
+            if not destinationWorker: destinationWorker = row[0]
+            connString = sourceWorker + ':' + row[2] + ' -> ' + destinationWorker + ':' + row[4]
+            connections.append(connString, humansize(int(row[5], False)), humansize(int(row[6])))
+    
+    return render_template('topo_network.html', connections=connections)
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():

@@ -1,6 +1,7 @@
 # REsT requests implementation to call Apache Storm APIs
 import json
 import requests
+import socket
 
 class StormCollector():
     def __init__(self, api_addr, api_port = 8080):
@@ -10,6 +11,8 @@ class StormCollector():
         
         self.topoUrl = self.baseUrl + '/topology'
         self.summUrl = self.topoUrl + '/summary'
+        self.superUrl = self.baseUrl + '/supervisor/summary'
+        self.supervisors = []
         self.topologies = {}
         self.workers = {}
         self.components = {}
@@ -17,6 +20,7 @@ class StormCollector():
         self.reload()
 
     def reload(self):
+        self.supervisors = self.getStormSupervisors()
         self.topologies = self.getTopologyList()
         if len(self.topologies) > 0:
             for topoId in self.getTopologyIds():
@@ -43,6 +47,19 @@ class StormCollector():
     def getTopologyName(self, topoId):
         return self.topologies[topoId]
    
+    def getStormSupervisors(self):
+        print(self.superUrl)
+        res = requests.get(self.superUrl)
+        jsonData = res.json()
+        
+        supervisors = []
+        try:
+            for supervisor in jsonData["supervisors"]:
+                supervisors.append(supervisor["host"])
+        except:
+            return None
+        return supervisors
+
     def getTopologyWorkers(self, topoId):
         """ Returns empty list if no topology found """
         url = self.baseUrl + "/topology-workers/" + topoId
@@ -56,6 +73,18 @@ class StormCollector():
             return None
 
         return topoWorkers
+
+    def getWorkersAddr(self, topoId):
+        addr = []
+        for worker in self.workers[topoId]:
+            addr.append(worker[0])
+        return tuple(addr)
+    
+    def getWorkersPort(self, topoId):
+        ports = []
+        for worker in self.workers[topoId]:
+            ports.append(worker[1])
+        return tuple(ports)
 
     def getTopologyComponents(self, topoId):
         """ Returns empty list if no topology found """
@@ -91,8 +120,13 @@ class StormCollector():
         for c in executors:
             w += len(executors[c])
         return w
+    
+    def getNameByIp(self, ip):
+        for node in self.supervisors:
+            if socket.gethostbyname(node) == ip: return node
+            else: return None
 
-    def getMetrics(baseUrl, topoId):
+    def getMetrics(self, baseUrl, topoId):
         """Returns number of tuples executed so far"""
         executorValues = {}
         
