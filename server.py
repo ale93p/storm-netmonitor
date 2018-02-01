@@ -70,8 +70,10 @@ def getSummary():
 def getTopoNetwork(addrs, ports):
     db = get_db()
     query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes \
-        from connections, probes where connections.ID == probes.connection and \
+        from connections, probes \
+        where connections.ID == probes.connection and \
         ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
+        and ts > ' + str(start_time - 60*60*3) + '\
         group by probes.connection \
         order by bytes desc'
     cur = db.execute(query)
@@ -130,9 +132,10 @@ def init():
 def conn_view():
     connections = getSummary()
     cons = []
+    now = time.time()
     for c in connections:
         ts = float(c[6])
-        if time.time() - ts < 60*60:
+        if  now - ts < 60*60:
             connString = c[0]+':'+c[1]+' -> '+c[2]+':'+c[3]
             cons.append((connString, humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
     return render_template('summary.html',connections=cons)
@@ -146,26 +149,49 @@ def topo_view():
         topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
     return render_template('topology.html', topo_summary=topoSummary, topo_name=storm.topologies[topo])
 
+def getTopologyConnections(topoId):
+    connections = []
+
+    net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
+    for row in net:
+        
+        sourceWorker = storm.getNameByIp(row[1])
+        if not sourceWorker: sourceWorker = storm.getNameByIp(row[0])
+        destinationWorker = storm.getNameByIp(row[3])
+        if not destinationWorker: destinationWorker = storm.getNameByIp(row[0])
+
+        connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
+
+        connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6]))))
+    return connections
+
+def getWorkersView(topoId):
+    mapping = {}
+    
+    for worker in storm.workers[topoId]:
+        mapping[(worker[0], worker[1])] = []
+
+    for component in storm.components[topoId]:
+        for executor in storm.executors[topoId][component]:
+            mapping[(executor[1], executor[2])].append(component)
+    
+    workers = [] 
+    for element in mapping:
+        workers.append((str(element[0]) + ':' + str(element[1]), len(mapping[element]), ', '.join(mapping[element])))
+
+    return workers
+
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
-    connections = []
+    
     if request.args['id']:
         topoId = request.args['id']
         storm.reload()
 
-        net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
-        for row in net:
-            
-            sourceWorker = storm.getNameByIp(row[1])
-            if not sourceWorker: sourceWorker = storm.getNameByIp(row[0])
-            destinationWorker = storm.getNameByIp(row[3])
-            if not destinationWorker: destinationWorker = storm.getNameByIp(row[0])
-
-            connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
-
-            connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6]))))
-    
-    return render_template('topo_network.html', connections=connections, topo_name=storm.topologies[topoId])
+        connections = getTopologyConnections(topoId)
+        workers = getWorkersView(topoId)
+        
+    return render_template('topo_network.html', connections=connections, workers=workers, topo_name=storm.topologies[topoId])
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():

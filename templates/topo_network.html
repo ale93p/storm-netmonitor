@@ -19,5 +19,18 @@
     </div>
     <div style="overflow-x:auto;">
         <p>Workers View</p>
+        <table>
+                <tr>
+                    <th>Worker</th><th>Num Executors</th><th>Worker Components</th>
+                </tr>       
+                {% for w in workers: %}
+                    <tr>
+                        <td><tt>{{ w[0] }}</tt></td><td>{{ w[1] }}</td><td>{{ w[2] }}</td>
+                    </tr>
+                {% else %}
+                    <td colspan=3>Some Error</td>
+                {% endfor %}
+            
+                </table>
     </div>
 {% endblock %}
