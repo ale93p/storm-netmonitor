@@ -2,13 +2,14 @@
 import json
 import requests
 import socket
+import os
 
 class StormCollector():
     def __init__(self, api_addr, api_port = 8080):
         self.address = api_addr
         self.port = api_port
         self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
-        
+
         self.topoUrl = self.baseUrl + '/topology'
         self.summUrl = self.topoUrl + '/summary'
         self.superUrl = self.baseUrl + '/supervisor/summary'
@@ -19,14 +20,18 @@ class StormCollector():
         self.executors = {}
         self.reload()
 
+
     def reload(self):
-        self.supervisors = self.getStormSupervisors()
-        self.topologies = self.getTopologyList()
-        if len(self.topologies) > 0:
-            for topoId in self.getTopologyIds():
-                self.workers[topoId] = self.getTopologyWorkers(topoId)
-                self.components[topoId] = self.getTopologyComponents(topoId) 
-                self.executors[topoId] = self.getTopologyExecutors(topoId)
+        if os.system("ping -c 1 " + self.address) is 0:
+            self.supervisors = self.getStormSupervisors()
+            self.topologies = self.getTopologyList()
+            if len(self.topologies) > 0:
+                for topoId in self.getTopologyIds():
+                    self.workers[topoId] = self.getTopologyWorkers(topoId)
+                    self.components[topoId] = self.getTopologyComponents(topoId) 
+                    self.executors[topoId] = self.getTopologyExecutors(topoId)
+        else:
+            print("Impossible to connect to Storm API")
 
     def getTopologyList(self):
         url = self.summUrl
@@ -48,8 +53,11 @@ class StormCollector():
         return self.topologies[topoId]
    
     def getStormSupervisors(self):
-        print(self.superUrl)
-        res = requests.get(self.superUrl)
+        # print(self.superUrl)
+        try:
+          res = requests.get(self.superUrl)
+        except requests.exceptions.ConnectionError:
+            return -1
         jsonData = res.json()
         
         supervisors = []
@@ -128,7 +136,7 @@ class StormCollector():
     def getNameByIp(self, ip):
         for node in self.supervisors:
             if socket.gethostbyname(node) == ip: return node
-            else: return None
+        return None
     
     def getIpByName(self, name):
             return socket.gethostbyname(name)

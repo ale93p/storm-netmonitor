@@ -1,6 +1,8 @@
 {% extends "layout.html" %}
 {% block body %}
+    <h2>{{ topo_name }}</h2>
     <div style="overflow-x:auto;">
+      <p>Topology Summary</p>
       <table>
         <tr>
             <th>Connections</th><th>Packets</th><th>Data</th>
@@ -14,5 +16,8 @@
         {% endfor %}
     
         </table>
+    </div>
+    <div style="overflow-x:auto;">
+        <p>Workers View</p>
     </div>
 {% endblock %}

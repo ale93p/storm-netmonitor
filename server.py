@@ -74,9 +74,18 @@ def getTopoNetwork(addrs, ports):
         ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
         group by probes.connection \
         order by bytes desc'
-    print(query)
     cur = db.execute(query)
     return cur.fetchall()
+
+def getAggregate(cur):
+    totPkts = 0
+    totData = 0
+    
+    for row in cur:
+        totPkts += int(row[5])
+        totData += int(row[6])
+
+    return (totPkts, totData)
 
 def insert_db(query):
     db = get_db()
@@ -133,9 +142,9 @@ def topo_view():
     storm.reload()
     topoSummary = []
     for topo in storm.topologies:
-        topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), len(storm.components[topo]), storm.executorsLength(storm.executors[topo])))
-    print(topoSummary)
-    return render_template('topology.html', topo_summary=topoSummary)
+        net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo)))
+        topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
+    return render_template('topology.html', topo_summary=topoSummary, topo_name=storm.topologies[topo])
 
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
@@ -146,18 +155,17 @@ def topo_network():
 
         net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
         for row in net:
-
+            
             sourceWorker = storm.getNameByIp(row[1])
             if not sourceWorker: sourceWorker = storm.getNameByIp(row[0])
             destinationWorker = storm.getNameByIp(row[3])
             if not destinationWorker: destinationWorker = storm.getNameByIp(row[0])
 
             connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
-            
 
             connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6]))))
     
-    return render_template('topo_network.html', connections=connections)
+    return render_template('topo_network.html', connections=connections, topo_name=storm.topologies[topoId])
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():
