@@ -69,7 +69,7 @@ def getSummary():
 
 def getTopoNetwork(addrs, ports, time):
     db = get_db()
-    query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes \
+    query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) \
         from connections, probes \
         where connections.ID == probes.connection and \
         ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
@@ -191,7 +191,7 @@ def getTopologyConnections(topoId):
 
         connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
 
-        connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6]))))
+        connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6])), datetime.datetime.fromtimestamp(float(row[7])).strftime("%H:%M:%S")))
     return connections
 
 def getWorkersView(topoId):

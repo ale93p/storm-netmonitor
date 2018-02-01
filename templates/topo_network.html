@@ -21,11 +21,11 @@
       <p>Connections Details</p>
       <table>
         <tr>
-            <th>Connections</th><th>Packets</th><th>Data</th>
+            <th>Connections</th><th>Packets</th><th>Data</th><th>Last</th>
         </tr>       
         {% for t in connections: %}
             <tr>
-                <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td>
+                <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td><td>{{ t[3] }}</td>
             </tr>
         {% else %}
             <td colspan=3>Wrong Topology ID</td>
