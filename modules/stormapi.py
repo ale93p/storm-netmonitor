@@ -3,16 +3,20 @@ import json
 import requests
 import socket
 import os
+import time
 
 class StormCollector():
     def __init__(self, api_addr, api_port = 8080):
         self.address = api_addr
         self.port = api_port
-        self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
+        
+        self.lastConnected = 0
 
+        self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
         self.topoUrl = self.baseUrl + '/topology'
         self.summUrl = self.topoUrl + '/summary'
         self.superUrl = self.baseUrl + '/supervisor/summary'
+
         self.supervisors = []
         self.topologies = {}
         self.workers = {}
@@ -20,9 +24,15 @@ class StormCollector():
         self.executors = {}
         self.reload()
 
+    def checkConnection():
+        now = time.time()
+        if now - self.lastConnected > 300 or not self.connected: 
+            self.lastTry = now
+            return True if os.system("ping -c 1 " + self.address) is 0 else False
+        else: return True
 
     def reload(self):
-        if os.system("ping -c 1 " + self.address) is 0:
+        if checkConnection() is 0:
             self.supervisors = self.getStormSupervisors()
             self.topologies = self.getTopologyList()
             if len(self.topologies) > 0:
