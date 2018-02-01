@@ -30,12 +30,24 @@ class StormCollector():
         now = time.time()
         if now - self.lastConnected > 300 or not self.connected: 
             self.lastConnected = now
+<<<<<<< HEAD
             return True if check_call(['ping','-c1',self.address]) is 0 else False
+=======
+            if check_call(['ping','-c1',self.address]) is 0:
+                self.connected = True
+                return True
+            else:
+                self.connected = False
+                return False
+>>>>>>> workers-view
         else: return True
 
     def reload(self):
         if self.isConnected():
+<<<<<<< HEAD
             self.connected = True
+=======
+>>>>>>> workers-view
             self.supervisors = self.getStormSupervisors()
             self.topologies = self.getTopologyList()
             if len(self.topologies) > 0:
