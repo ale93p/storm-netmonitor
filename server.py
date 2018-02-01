@@ -67,17 +67,46 @@ def getSummary():
     cur = db.execute(query)
     return cur.fetchall()
 
-def getTopoNetwork(addrs, ports):
+def getTopoNetwork(addrs, ports, time):
     db = get_db()
     query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes \
         from connections, probes \
         where connections.ID == probes.connection and \
         ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
-        and ts > ' + str(start_time - 60*60*3) + '\
+        and ts > ' + str(time) + '\
         group by probes.connection \
         order by bytes desc'
     cur = db.execute(query)
     return cur.fetchall()
+
+def getWorkerDataIn(addr, port, time):
+    db = get_db()
+    query = 'select SUM(bytes) as bytes \
+        from connections, probes \
+        where connections.ID == probes.connection \
+        and (dst_addr = \'' + str(addr) + '\' and dst_port = \'' + str(port) + '\') \
+        and ts > ' + str(time) + '\
+        group by dst_addr, dst_port'
+
+    cur = db.execute(query)
+    data = cur.fetchone()
+
+    return data[0] if data else -1
+
+
+def getWorkerDataOut(addr, port, time):
+    db = get_db()
+    query = 'select SUM(bytes) as bytes \
+        from connections, probes \
+        where connections.ID == probes.connection \
+        and (src_addr = \'' + str(addr) + '\' and src_port = \'' + str(port) + '\') \
+        and ts > ' + str(time) + '\
+        group by src_addr, src_port'
+
+    cur = db.execute(query)
+    data = cur.fetchone()
+
+    return data[0] if data else -1
 
 def getAggregate(cur):
     totPkts = 0
@@ -145,14 +174,14 @@ def topo_view():
     storm.reload()
     topoSummary = []
     for topo in storm.topologies:
-        net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo)))
+        net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
         topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
     return render_template('topology.html', topo_summary=topoSummary, topo_name=storm.topologies[topo])
 
 def getTopologyConnections(topoId):
     connections = []
 
-    net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))
+    net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId), time.time() - storm.getLastUp(topoId))
     for row in net:
         
         sourceWorker = storm.getNameByIp(row[1])
@@ -171,13 +200,19 @@ def getWorkersView(topoId):
     for worker in storm.workers[topoId]:
         mapping[(worker[0], worker[1])] = []
 
+   
+
     for component in storm.components[topoId]:
         for executor in storm.executors[topoId][component]:
             mapping[(executor[1], executor[2])].append(component)
-    
+
     workers = [] 
     for element in mapping:
-        workers.append((str(element[0]) + ':' + str(element[1]), len(mapping[element]), ', '.join(mapping[element])))
+
+        in_data = getWorkerDataIn(storm.getIpByName(element[0]), element[1], time.time() - storm.getLastUp(topoId))
+        out_data = getWorkerDataOut(storm.getIpByName(element[0]), element[1], time.time() - storm.getLastUp(topoId))
+
+        workers.append((str(element[0]) + ':' + str(element[1]), len(mapping[element]), ', '.join(mapping[element]), humansize(int(in_data)), humansize(int(out_data))))
 
     return workers
 

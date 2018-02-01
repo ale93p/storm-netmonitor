@@ -9,10 +9,10 @@
                 </tr>       
                 {% for w in workers: %}
                     <tr>
-                        <td><tt>{{ w[0] }}</tt></td><td>{{ w[1] }}</td><td>{{ w[2] }}</td><td></td><td></td>
+                        <td><tt>{{ w[0] }}</tt></td><td>{{ w[1] }}</td><td>{{ w[2] }}</td><td>{{ w[3] }}</td><td>{{ w[4] }}</td>
                     </tr>
                 {% else %}
-                    <td colspan=3>Some Error</td>
+                    <td colspan=5>Some Error</td>
                 {% endfor %}
             
                 </table>

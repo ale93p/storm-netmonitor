@@ -27,27 +27,24 @@ class StormCollector():
         self.reload()
 
     def isConnected(self):
+        
         now = time.time()
-        if now - self.lastConnected > 300 or not self.connected: 
+        if now - self.lastConnected > 300 or not self.connected:
+            print("Checking Storm Connection... ", end="",flush=True)
             self.lastConnected = now
-<<<<<<< HEAD
-            return True if check_call(['ping','-c1',self.address]) is 0 else False
-=======
-            if check_call(['ping','-c1',self.address]) is 0:
-                self.connected = True
-                return True
-            else:
+            try:
+                if check_call(['ping','-c1',self.address], stdout=DEVNULL, stderr=STDOUT) is 0:
+                    self.connected = True
+                    print("OK")
+                    return True
+            except:
                 self.connected = False
+                print("ERROR")
                 return False
->>>>>>> workers-view
         else: return True
 
     def reload(self):
         if self.isConnected():
-<<<<<<< HEAD
-            self.connected = True
-=======
->>>>>>> workers-view
             self.supervisors = self.getStormSupervisors()
             self.topologies = self.getTopologyList()
             if len(self.topologies) > 0:
@@ -55,9 +52,6 @@ class StormCollector():
                     self.workers[topoId] = self.getTopologyWorkers(topoId)
                     self.components[topoId] = self.getTopologyComponents(topoId) 
                     self.executors[topoId] = self.getTopologyExecutors(topoId)
-        else:
-            self.connected = False
-            print("Impossible to connect to Storm API")
 
     def getTopologyList(self):
         url = self.summUrl
@@ -89,11 +83,19 @@ class StormCollector():
         supervisors = []
         try:
             for supervisor in jsonData["supervisors"]:
-                supervisors.append(supervisor["host"])
+                supervisors.append((supervisor["host"],supervisor["uptimeSeconds"]))
         except:
             return None
         return supervisors
 
+    def getLastUp(self, id):
+        times = []
+        # TODO: check only for supervisors used by the topology
+        for supervisor in self.supervisors:
+            times.append(supervisor[1])
+        return min(times)
+
+    
     def getTopologyWorkers(self, topoId):
         """ Returns empty list if no topology found """
         url = self.baseUrl + "/topology-workers/" + topoId
@@ -161,7 +163,7 @@ class StormCollector():
     
     def getNameByIp(self, ip):
         for node in self.supervisors:
-            if gethostbyname(node) == ip: return node
+            if gethostbyname(node[0]) == ip: return node[0]
         return None
     
     def getIpByName(self, name):
