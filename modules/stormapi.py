@@ -1,8 +1,8 @@
 # REsT requests implementation to call Apache Storm APIs
 import json
 import requests
-import socket
-import os
+from socket import gethostbyname
+from subprocess import DEVNULL, STDOUT, check_call
 import time
 
 class StormCollector():
@@ -10,6 +10,7 @@ class StormCollector():
         self.address = api_addr
         self.port = api_port
         
+        self.connected = False
         self.lastConnected = 0
 
         self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
@@ -22,17 +23,19 @@ class StormCollector():
         self.workers = {}
         self.components = {}
         self.executors = {}
+
         self.reload()
 
-    def checkConnection():
+    def isConnected(self):
         now = time.time()
         if now - self.lastConnected > 300 or not self.connected: 
-            self.lastTry = now
-            return True if os.system("ping -c 1 " + self.address) is 0 else False
+            self.lastConnected = now
+            return True if check_call(['ping','-c1',self.address]) is 0 else False
         else: return True
 
     def reload(self):
-        if checkConnection() is 0:
+        if self.isConnected():
+            self.connected = True
             self.supervisors = self.getStormSupervisors()
             self.topologies = self.getTopologyList()
             if len(self.topologies) > 0:
@@ -41,6 +44,7 @@ class StormCollector():
                     self.components[topoId] = self.getTopologyComponents(topoId) 
                     self.executors[topoId] = self.getTopologyExecutors(topoId)
         else:
+            self.connected = False
             print("Impossible to connect to Storm API")
 
     def getTopologyList(self):
@@ -145,11 +149,11 @@ class StormCollector():
     
     def getNameByIp(self, ip):
         for node in self.supervisors:
-            if socket.gethostbyname(node) == ip: return node
+            if gethostbyname(node) == ip: return node
         return None
     
     def getIpByName(self, name):
-            return socket.gethostbyname(name)
+            return gethostbyname(name)
 
     def getMetrics(self, baseUrl, topoId):
         """Returns number of tuples executed so far"""
