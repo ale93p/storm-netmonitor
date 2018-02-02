@@ -44,7 +44,7 @@ def getWorkersPid(stormSlots):
     return mapping
 
 def getPidByPort(port):
-    for p in psutil.net_connections('tco'):
+    for p in psutil.net_connections('tcp'):
         if p.laddr and str(p.laddr.port) is str(port):
             return p.pid
         
