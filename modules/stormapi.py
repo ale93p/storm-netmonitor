@@ -89,10 +89,14 @@ class StormCollector():
         return supervisors
 
     def getLastUp(self, id):
+        url = self.baseUrl + '/' + id
         times = []
-        # TODO: check only for supervisors used by the topology
-        for supervisor in self.supervisors:
-            times.append(supervisor[1])
+        res = requests.get(url)
+        jsonData = res.json()
+
+        for worker in jsonData["workers"]:
+            times.append(worker["uptimeSeconds"])
+
         return min(times)
 
     
