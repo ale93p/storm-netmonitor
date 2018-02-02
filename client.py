@@ -13,12 +13,12 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
 
 def portInsert(me, sh, sp, dh, dp):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
-    port = None
-    pid = None
-    if sh is me:
+    port = ''
+    pid = ''
+    if sh == me:
         port = sp
         pid = getPidByPort(port)
-    elif dh is me:
+    elif dh == me:
         port = dp
         pid = getPidByPort(port)
     return requests.get(url + "?port=" + port + "&pid=" + pid)
