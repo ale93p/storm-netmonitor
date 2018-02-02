@@ -12,7 +12,7 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
 def portInsert(me, sh, sp, dh, dp):
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     port = ''
     pid = ''
     if sh == me:
