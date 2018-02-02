@@ -7,18 +7,23 @@ from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
 import psutil
 
+localhost = ['127.0.0.1', '127.0.1.1'] 
+
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
 def portInsert(me, sh, sp, dh, dp):
+    
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     port = ''
     pid = ''
-    if sh == me:
+    if sh == me or sh in localhost:
         port = sp
         pid = getPidByPort(port)
-    elif dh == me:
+    # there may lie a bug: if a connection is from localhost:portA to localhost:portB, he doesn't parse the receiver port (portB)
+    # theoretically this port will be parsed when one packet will be sent in the opposit direction (localhost:portB -> localhost:portA)
+    elif dh == me or dh in localhost:
         port = dp
         pid = getPidByPort(port)
     return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
@@ -37,7 +42,6 @@ def getStormSlots(conf):
     return yaml.load(f)['supervisor.slots.ports']
 
 def getPidByPort(port):
-    print(port)
     for p in psutil.net_connections('tcp'):
         if p.laddr and str(p.laddr.port) == str(port):
             return p.pid
