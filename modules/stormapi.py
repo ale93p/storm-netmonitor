@@ -89,8 +89,9 @@ class StormCollector():
         return supervisors
 
     def getLastUp(self, id):
-        url = self.baseUrl + '/' + id
+        url = self.topoUrl + '/' + id
         times = []
+
         res = requests.get(url)
         jsonData = res.json()
 
