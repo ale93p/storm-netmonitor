@@ -96,7 +96,7 @@ if __name__ == "__main__":
                 res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes) 
                 print("[DEBUG] Network Insert:",res) if args.debug else None
                 
-                res = portInsert(myip, key[0],key[1],key[2],key[3])
+                res = portInsert(myIp, key[0],key[1],key[2],key[3])
                 print("[DEBUG] Port Insert:",res) if args.debug else None
                 
                 # trace[key].reset() # this?
