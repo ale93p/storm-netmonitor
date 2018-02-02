@@ -68,32 +68,34 @@ def getTopoNetwork(addrs, ports, time):
         and ts > ' + str(time) + '\
         group by probes.connection \
         order by bytes desc'
+
     cur = db.execute(query)
     return cur.fetchall()
 
-def getWorkerDataIn(addr, port, time):
+def getWorkerDataIn(addr, ports, time):
     db = get_db()
     query = 'select SUM(bytes) as bytes \
         from connections, probes \
         where connections.ID == probes.connection \
-        and (dst_addr = \'' + str(addr) + '\' and dst_port = \'' + str(port) + '\') \
+        and (dst_addr = \'' + str(addr) + '\' and dst_port in ' + str(ports) + ') \
         and ts > ' + str(time) + '\
-        group by dst_addr, dst_port'
+        group by dst_addr'
 
+    print(query)
     cur = db.execute(query)
     data = cur.fetchone()
 
     return data[0] if data else -1
 
 
-def getWorkerDataOut(addr, port, time):
+def getWorkerDataOut(addr, ports, time):
     db = get_db()
     query = 'select SUM(bytes) as bytes \
         from connections, probes \
         where connections.ID == probes.connection \
-        and (src_addr = \'' + str(addr) + '\' and src_port = \'' + str(port) + '\') \
+        and (src_addr = \'' + str(addr) + '\' and src_port in ' + str(ports) + ') \
         and ts > ' + str(time) + '\
-        group by src_addr, src_port'
+        group by src_addr'
 
     cur = db.execute(query)
     data = cur.fetchone()
@@ -191,7 +193,7 @@ def getTopologyConnections(topoId, portMap):
         
         if (sourceWorkerIp, sourcePort) in portMap: sourcePid = portMap[(sourceWorkerIp, sourcePort)]
         else: sourcePid = 'NA'
-        if (destinationWorkerIp, destPort) in portMap: sourcePid = portMap[(destinationWorkerIp, destPort)]
+        if (destinationWorkerIp, destPort) in portMap: destPid = portMap[(destinationWorkerIp, destPort)]
         else: destPid = 'NA'
 
         workerString = sourcePid + ' -> ' + destPid
@@ -213,12 +215,15 @@ def getWorkersView(topoId, portMap):
     ret = [] 
     for element in executors:
         ip = storm.getIpByName(element[0])
+        ports = [element[1]]
+        if (ip, str(element[1])) in portMap:
+            pid = portMap[(ip, str(element[1]))]
+            ports = [k[1] for k,v in portMap.items() if v==str(pid)]
+            print(ports)
 
-        in_data = getWorkerDataIn(ip, element[1], time.time() - storm.getLastUp(topoId))
-        out_data = getWorkerDataOut(ip, element[1], time.time() - storm.getLastUp(topoId))
+        in_data = getWorkerDataIn(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
+        out_data = getWorkerDataOut(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
 
-
-        print(portMap)
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))] 
         else: pid = 'NA'
