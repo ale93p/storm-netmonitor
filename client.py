@@ -21,7 +21,7 @@ def portInsert(me, sh, sp, dh, dp):
     elif dh == me:
         port = dp
         pid = getPidByPort(port)
-    return requests.get(url + "?port=" + port + "&pid=" + pid)
+    return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
     
 def readTcpProbe(file):
     file.seek(0,2)
