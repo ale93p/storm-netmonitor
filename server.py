@@ -73,6 +73,9 @@ def getTopoNetwork(addrs, ports, time):
     return cur.fetchall()
 
 def getWorkerDataIn(addr, ports, time):
+
+    if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
+
     db = get_db()
     query = 'select SUM(bytes) as bytes \
         from connections, probes \
@@ -89,6 +92,9 @@ def getWorkerDataIn(addr, ports, time):
 
 
 def getWorkerDataOut(addr, ports, time):
+
+    if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
+
     db = get_db()
     query = 'select SUM(bytes) as bytes \
         from connections, probes \
@@ -219,7 +225,8 @@ def getWorkersView(topoId, portMap):
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))]
             ports = [k[1] for k,v in portMap.items() if v==str(pid)]
-            print(ports)
+        print(ports)
+        print(tuple(ports))
 
         in_data = getWorkerDataIn(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
