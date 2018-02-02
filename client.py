@@ -64,7 +64,6 @@ if __name__ == "__main__":
     init_interval = True
 
     stormSlots = getStormSlots(args.storm_conf)
-    slotsPid = getWorkersPid(stormSlots)
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
