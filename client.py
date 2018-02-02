@@ -36,16 +36,10 @@ def getStormSlots(conf):
     f = open(conf, 'r')
     return yaml.load(f)['supervisor.slots.ports']
 
-def getWorkersPid(stormSlots):
-    mapping = {}
-    for p in psutil.net_connections('tcp'):
-        if p.laddr and str(p.laddr.port) in stormSlots:
-            mapping[p.pid] = p.laddr.port 
-    return mapping
-
 def getPidByPort(port):
+    print(port)
     for p in psutil.net_connections('tcp'):
-        if p.laddr and str(p.laddr.port) is str(port):
+        if p.laddr and str(p.laddr.port) == str(port):
             return p.pid
         
 def getMyIp():
