@@ -18,3 +18,10 @@ create table probes (
     bytes text,
 	foreign key(connection) references connections(ID)
 );
+
+create table port_mapping (
+    ID integer primary key autoincrement,
+    addr text,
+    port text,
+    pid text
+);

@@ -5,11 +5,22 @@ import time
 import argparse
 from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
+import psutil
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
+def portInsert(me, sh, sp, dh, dp):
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
+    if sh is me:
+        port = sp
+        pid = getPidByPort(port)
+    elif dh is me:
+        port = dp
+        pid = getPidByPort(port)
+    return requests.get(url + "?port=" + port + "&pid=" + pid)
+    
 def readTcpProbe(file):
     file.seek(0,2)
     while True:
@@ -22,7 +33,21 @@ def readTcpProbe(file):
 def getStormSlots(conf):
     f = open(conf, 'r')
     return yaml.load(f)['supervisor.slots.ports']
-    
+
+def getWorkersPid(stormSlots):
+    mapping = {}
+    for p in psutil.net_connections('tcp'):
+        if p.laddr and str(p.laddr.port) in stormSlots:
+            mapping[p.pid] = p.laddr.port 
+    return mapping
+
+def getPidByPort(port):
+    for p in psutils.net_connections('tco'):
+        if p.laddr and str(p.laddr.port) is str(port):
+            return p.pid
+        
+def getMyIp():
+    return requests.get('https://api.ipify.org/?format=json').json()['ip']
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
@@ -36,12 +61,14 @@ if __name__ == "__main__":
 
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
-    
+    myIp = getMyIp()
+
     trace = {}
     start_interval = None
     init_interval = True
 
     stormSlots = getStormSlots(args.storm_conf)
+    slotsPid = getWorkersPid(stormSlots)
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
@@ -64,8 +91,13 @@ if __name__ == "__main__":
         if not init_interval and time.time() - start_interval >= 10:
             start_interval = time.time()
             print("[DEBUG] Sending data at ", start_interval) if args.debug else None
+
             for key in trace:
-                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-                print("[DEBUG] Server response:",res) if args.debug else None
+                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes) 
+                print("[DEBUG] Network Insert:",res) if args.debug else None
+                
+                res = portInsert(myip, key[0],key[1],key[2],key[3])
+                print("[DEBUG] Port Insert:",res) if args.debug else None
+                
                 # trace[key].reset() # this?
             trace = {} # or this?

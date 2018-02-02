@@ -53,14 +53,6 @@ def writeToCsv(d):
         if newfile: csvwriter.writerow(title_row)
         csvwriter.writerow(d)
 
-def getConnection(sa,sp,da,dp):
-    db = get_db()
-    query = 'select ID, client from connections where src_addr == \'' + sa + '\' and src_port == \'' + sp + '\' and dst_addr == \'' + da + '\' and dst_port == \'' + dp + '\''
-    cur = db.execute(query)    
-    r = list(cur.fetchall())
-    if len(r) < 1: return None
-    else: return r
-
 def getSummary():
     db = get_db()
     query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes desc;'
@@ -228,6 +220,14 @@ def topo_network():
         
     return render_template('topo_network.html', connections=connections, workers=workers, topo_name=storm.topologies[topoId])
 
+def getConnection(sa,sp,da,dp):
+    db = get_db()
+    query = 'select ID, client from connections where src_addr == \'' + sa + '\' and src_port == \'' + sp + '\' and dst_addr == \'' + da + '\' and dst_port == \'' + dp + '\''
+    cur = db.execute(query)    
+    r = list(cur.fetchall())
+    if len(r) < 1: return None
+    else: return r
+
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert():
     try:
@@ -253,6 +253,39 @@ def networkInsert():
         else: connId = c[0][0]
         query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
         insert_db(query)
+
+    print ("[VERBOSE] Data write success") if args.verbose else None
+    return "Ok"
+
+def getPort(addr, port):
+    db = get_db()
+    query = 'select pid from port_mapping where addr == \'' + addr + '\' and port == \'' + port + '\''
+    cur = db.execute(query)    
+    r = list(cur.fetchone())
+    if len(r) < 1: return None
+    else: return r
+
+@app.route("/api/v0.1/port/insert", methods=['GET'])
+def portInsert():
+    try:
+        client = request.remote_addr
+        ts = time.time()
+        port = request.args["port"]
+        pid = request.args["pid"]
+    except:
+        print ("[ERROR] Wrong API request")
+        abort(400)
+    print ("[VERBOSE] Received from ",client," at ",str(ts),": ", port," <-> ", pid, sep='') if args.verbose else None
+    
+    p = getPort(client, port)
+    if p and pid == p[0][1]: pass
+    else:
+        if not p:
+            query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
+            connId = insert_db(query)
+        else:
+            query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\')'
+            insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"
