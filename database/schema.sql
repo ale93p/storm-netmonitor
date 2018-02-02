@@ -1,5 +1,6 @@
 drop table if exists connections;
 drop table if exists probes;
+drop table if exists port_mapping;
 
 create table connections (
     ID integer primary key autoincrement,
