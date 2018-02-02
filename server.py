@@ -261,7 +261,7 @@ def getPort(addr, port):
     db = get_db()
     query = 'select pid from port_mapping where addr == \'' + addr + '\' and port == \'' + port + '\''
     cur = db.execute(query)    
-    r = list(cur.fetchone())
+    r = list(cur.fetchall())
     if len(r) < 1: return None
     else: return r
 
@@ -278,13 +278,13 @@ def portInsert():
     print ("[VERBOSE] Received from ",client," at ",str(ts),": ", port," <-> ", pid, sep='') if args.verbose else None
     
     p = getPort(client, port)
-    if p and pid == p[0][1]: pass
+    if p and pid == p[0][0]: pass
     else:
         if not p:
             query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
             connId = insert_db(query)
         else:
-            query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\')'
+            query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
             insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
