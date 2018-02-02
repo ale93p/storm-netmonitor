@@ -170,7 +170,7 @@ def topo_view():
         topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
     return render_template('topology.html', topo_summary=topoSummary, topo_name=storm.topologies[topo])
 
-def getTopologyConnections(topoId):
+def getTopologyConnections(topoId, portMap):
     connections = []
 
     net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId), time.time() - storm.getLastUp(topoId))
@@ -181,32 +181,62 @@ def getTopologyConnections(topoId):
         destinationWorker = storm.getNameByIp(row[3])
         if not destinationWorker: destinationWorker = storm.getNameByIp(row[0])
 
-        connString = sourceWorker.split('.',1)[0] + ':' + row[2] + ' -> ' + destinationWorker.split('.',1)[0] + ':' + row[4]
+        sourceWorkerIp = storm.getIpByName(sourceWorker)
+        destinationWorkerIp = storm.getIpByName(destinationWorker)
 
-        connections.append((connString, humansize(int(row[5]), False), humansize(int(row[6])), datetime.datetime.fromtimestamp(float(row[7])).strftime("%H:%M:%S")))
+        sourcePort = row[2]
+        destPort = row[4]
+
+        connString = sourceWorker + ':' + sourcePort + ' -> ' + destinationWorker + ':' + destPort
+        
+        if (sourceWorkerIp, sourcePort) in portMap: sourcePid = portMap[(sourceWorkerIp, sourcePort)]
+        else: sourcePid = 'NA'
+        if (destinationWorkerIp, destPort) in portMap: sourcePid = portMap[(destinationWorkerIp, destPort)]
+        else: destPid = 'NA'
+
+        workerString = sourcePid + ' -> ' + destPid
+
+        connections.append((connString, workerString, humansize(int(row[5]), False), humansize(int(row[6])), datetime.datetime.fromtimestamp(float(row[7])).strftime("%H:%M:%S")))
+    
     return connections
 
-def getWorkersView(topoId):
-    mapping = {}
+def getWorkersView(topoId, portMap):
+    executors = {}
     
     for worker in storm.workers[topoId]:
-        mapping[(worker[0], worker[1])] = []
-
-   
+        executors[(worker[0], worker[1])] = []
 
     for component in storm.components[topoId]:
         for executor in storm.executors[topoId][component]:
-            mapping[(executor[1], executor[2])].append(component)
+            executors[(executor[1], executor[2])].append(component)
 
-    workers = [] 
-    for element in mapping:
+    ret = [] 
+    for element in executors:
+        ip = storm.getIpByName(element[0])
 
-        in_data = getWorkerDataIn(storm.getIpByName(element[0]), element[1], time.time() - storm.getLastUp(topoId))
-        out_data = getWorkerDataOut(storm.getIpByName(element[0]), element[1], time.time() - storm.getLastUp(topoId))
+        in_data = getWorkerDataIn(ip, element[1], time.time() - storm.getLastUp(topoId))
+        out_data = getWorkerDataOut(ip, element[1], time.time() - storm.getLastUp(topoId))
 
-        workers.append((str(element[0]) + ':' + str(element[1]), len(mapping[element]), ', '.join(mapping[element]), humansize(int(in_data)), humansize(int(out_data))))
 
-    return workers
+        print(portMap)
+        if (ip, str(element[1])) in portMap:
+            pid = portMap[(ip, str(element[1]))] 
+        else: pid = 'NA'
+        ret.append((pid, str(element[0]) + ':' + str(element[1]), len(executors[element]), ', '.join(executors[element]), humansize(int(in_data)), humansize(int(out_data))))
+
+    return ret
+
+def getPortMap():
+    
+    db = get_db()
+    query = 'select addr, port, pid from port_mapping'
+    cur = db.execute(query)
+
+    portmap = {}    
+    for row in cur.fetchall():
+        portmap[(row[0], row[1])] = row[2]
+
+    return portmap
 
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
@@ -215,8 +245,10 @@ def topo_network():
         topoId = request.args['id']
         storm.reload()
 
-        connections = getTopologyConnections(topoId)
-        workers = getWorkersView(topoId)
+        portMap = getPortMap()
+        workers = getWorkersView(topoId, portMap)
+        connections = getTopologyConnections(topoId, portMap)
+        
         
     return render_template('topo_network.html', connections=connections, workers=workers, topo_name=storm.topologies[topoId])
 

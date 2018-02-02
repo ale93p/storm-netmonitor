@@ -5,14 +5,14 @@
         <p>Workers Summary</p>
         <table>
                 <tr>
-                    <th>Worker</th><th>Num Executors</th><th>Worker Components</th><th>In Data</th><th>Out Data</th>
+                    <th>pid</th><th>Worker</th><th>Num Executors</th><th>Worker Components</th><th>In Data</th><th>Out Data</th>
                 </tr>       
                 {% for w in workers: %}
                     <tr>
-                        <td><tt>{{ w[0] }}</tt></td><td>{{ w[1] }}</td><td>{{ w[2] }}</td><td>{{ w[3] }}</td><td>{{ w[4] }}</td>
+                        <td>{{ w[0] }}</td><td><tt>{{ w[1] }}</tt></td><td>{{ w[2] }}</td><td>{{ w[3] }}</td><td>{{ w[4] }}</td><td>{{ w[5] }}</td>
                     </tr>
                 {% else %}
-                    <td colspan=5>Some Error</td>
+                    <td colspan=6>Some Error</td>
                 {% endfor %}
             
                 </table>
@@ -21,14 +21,14 @@
       <p>Connections Details</p>
       <table>
         <tr>
-            <th>Connections</th><th>Packets</th><th>Data</th><th>Last</th>
+            <th>Connections</th><th>Workers</th><th>Packets</th><th>Data</th><th>Last</th>
         </tr>       
         {% for t in connections: %}
             <tr>
-                <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td><td>{{ t[3] }}</td>
+                <td><tt>{{ t[0] }}</tt></td><td>{{ t[1] }}</td><td>{{ t[2] }}</td><td>{{ t[3] }}</td><td>{{ t[4] }}</td>
             </tr>
         {% else %}
-            <td colspan=3>Wrong Topology ID</td>
+            <td colspan=4>Wrong Topology ID</td>
         {% endfor %}
     
         </table>
