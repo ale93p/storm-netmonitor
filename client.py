@@ -7,9 +7,13 @@ from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
 import psutil
 
-localhost = ['127.0.0.1', '127.0.1.1'] 
 
-def networkInsert(ts, sh, sp, dh, dp, pk, by):
+
+localhost = ['127.0.0.1', '127.0.1.1'] 
+portMapping = {}
+
+def networkInsert(ts, sh, sp, dh, dp, pk, by):  
+    #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
@@ -26,8 +30,13 @@ def portInsert(me, sh, sp, dh, dp):
     elif dh == me or dh in localhost:
         port = dp
         pid = getPidByPort(port)
-    return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
     
+    if not portMapping[(port,pid)]:
+        return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+    else:
+        portMapping[(port, pid)] = True
+        return 'OK'    
+
 def readTcpProbe(file):
     file.seek(0,2)
     while True:
@@ -58,7 +67,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(" * Running in DEBUG mode * ") if args.debug else None
-
+    
+    print(time.time())
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
     myIp = getMyIp()
@@ -71,7 +81,8 @@ if __name__ == "__main__":
 
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
-
+    
+    print(time.time())
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
@@ -85,14 +96,16 @@ if __name__ == "__main__":
         
         if len(trace) >= 1 and init_interval: 
             start_interval = time.time()
+            print('first relevation:',start_interval)
             init_interval = not init_interval
 
         if not init_interval and time.time() - start_interval >= 10:
             start_interval = time.time()
             print("[DEBUG] Sending data at ", start_interval) if args.debug else None
-
+            print('sending data at:',start_interval)
             for key in trace:
                 res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes) 
+                print(time.time(),'conn:',key,'pkts:',trace[key].pkts,'data:',trace[key].bytes)
                 print("[DEBUG] Network Insert:",res) if args.debug else None
                 
                 res = portInsert(myIp, key[0],key[1],key[2],key[3])
