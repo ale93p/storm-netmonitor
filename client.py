@@ -8,7 +8,6 @@ from modules.tcpprobe import ProbeParser, ProbeAggregator
 import psutil
 
 import _thread as thread
-import threading
 
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
@@ -79,7 +78,7 @@ if __name__ == "__main__":
 
     print(" * Running in DEBUG mode * ") if args.debug else None
     
-    print('strt:',time.time())
+    print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
     myIp = getMyIp()
@@ -108,7 +107,7 @@ if __name__ == "__main__":
         if init_interval:
             if len(trace) >= 1: 
                 start_interval = now
-                print('frst:',start_interval, time.time())
+                print('[DEBUG] frst:',start_interval, time.time()) if args.debug else None
                 init_interval = not init_interval
 	
         else:
