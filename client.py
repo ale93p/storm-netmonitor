@@ -7,7 +7,8 @@ from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
 import psutil
 
-
+import _thread as thread
+import threading
 
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
@@ -24,17 +25,16 @@ def portInsert(me, sh, sp, dh, dp):
     pid = ''
     if sh == me or sh in localhost:
         port = sp
-        pid = getPidByPort(port)
     # there may lie a bug: if a connection is from localhost:portA to localhost:portB, he doesn't parse the receiver port (portB)
     # theoretically this port will be parsed when one packet will be sent in the opposit direction (localhost:portB -> localhost:portA)
     elif dh == me or dh in localhost:
         port = dp
-        pid = getPidByPort(port)
     
-    if not portMapping[(port,pid)]:
+    if port not in portMapping:
+        pid = getPidByPort(port)
+        portMapping[port] = pid
         return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
     else:
-        portMapping[(port, pid)] = True
         return 'OK'    
 
 def readTcpProbe(file):
@@ -58,6 +58,17 @@ def getPidByPort(port):
 def getMyIp():
     return requests.get('https://api.ipify.org/?format=json').json()['ip']
 
+def sendData(trace, myIp):
+    now = time.time()
+    print('newT:',now)
+    for key in trace:
+        res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
+        print('send:',time.time())
+        print("[DEBUG] Network Insert:",res) if args.debug else None
+	
+        res = portInsert(myIp, key[0],key[1],key[2],key[3])
+        print("[DEBUG] Port Insert:",res) if args.debug else None
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
@@ -68,7 +79,7 @@ if __name__ == "__main__":
 
     print(" * Running in DEBUG mode * ") if args.debug else None
     
-    print(time.time())
+    print('strt:',time.time())
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
     myIp = getMyIp()
@@ -78,11 +89,10 @@ if __name__ == "__main__":
     init_interval = True
 
     stormSlots = getStormSlots(args.storm_conf)
-
+    
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
     
-    print(time.time())
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
@@ -94,22 +104,18 @@ if __name__ == "__main__":
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
-        if len(trace) >= 1 and init_interval: 
-            start_interval = time.time()
-            print('first relevation:',start_interval)
-            init_interval = not init_interval
+        now = time.time()
+        if init_interval:
+            if len(trace) >= 1: 
+                start_interval = now
+                print('frst:',start_interval, time.time())
+                init_interval = not init_interval
+	
+        else:
+            if now - start_interval >= 10:
+                start_interval = now
+                print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
-        if not init_interval and time.time() - start_interval >= 10:
-            start_interval = time.time()
-            print("[DEBUG] Sending data at ", start_interval) if args.debug else None
-            print('sending data at:',start_interval)
-            for key in trace:
-                res = networkInsert(start_interval, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes) 
-                print(time.time(),'conn:',key,'pkts:',trace[key].pkts,'data:',trace[key].bytes)
-                print("[DEBUG] Network Insert:",res) if args.debug else None
+                thread.start_new_thread(sendData, (trace, myIp))    
                 
-                res = portInsert(myIp, key[0],key[1],key[2],key[3])
-                print("[DEBUG] Port Insert:",res) if args.debug else None
-                
-                # trace[key].reset() # this?
-            trace = {} # or this?
+                trace = {} 
