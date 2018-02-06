@@ -39,8 +39,9 @@ def initializePortMapping(ports):
     for port in ports:
         if port not in portMapping:
             pid = getPidByPort(port)
-            portMapping[port] = pid
-            requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+            if pid:
+                portMapping[port] = pid
+                requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
 
 def readTcpProbe(file):
     file.seek(0,2)
