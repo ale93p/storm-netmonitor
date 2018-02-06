@@ -344,4 +344,4 @@ if __name__ == "__main__":
 
     print(" * Enabled verbose output * ") if args.verbose else None
 
-    app.run(host='0.0.0.0', port=args.port)
+    app.run(host='0.0.0.0', port=args.port, threaded=True)
