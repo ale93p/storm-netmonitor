@@ -65,10 +65,10 @@ def getMyIp():
 
 def sendData(trace, myIp):
     now = time.time()
-    print('newT:',now)
+    print('[DEBUG] newT:',now) if args.debug else None
     for key in trace:
         res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-        print('send:',time.time())
+        print('[DEBUG] send:',time.time()) if args.debug else None
         print("[DEBUG] Network Insert:",res) if args.debug else None
 	
         res = portInsert(myIp, key[0],key[1],key[2],key[3])
