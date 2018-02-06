@@ -36,7 +36,6 @@ def portInsert(me, sh, sp, dh, dp):
 
 def initializePortMapping(ports):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-    ports = 
     for port in ports:
         if port not in portMapping:
             pid = getPidByPort(port)
