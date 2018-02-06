@@ -84,7 +84,6 @@ def getWorkerDataIn(addr, ports, time):
         and ts > ' + str(time) + '\
         group by dst_addr'
 
-    print(query)
     cur = db.execute(query)
     data = cur.fetchone()
 
@@ -225,8 +224,6 @@ def getWorkersView(topoId, portMap):
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))]
             ports = [k[1] for k,v in portMap.items() if v==str(pid)]
-        print(ports)
-        print(tuple(ports))
 
         in_data = getWorkerDataIn(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
