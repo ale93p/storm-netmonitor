@@ -24,8 +24,6 @@ def portInsert(me, sh, sp, dh, dp):
     pid = ''
     if sh == me or sh in localhost:
         port = sp
-    # there may lie a bug: if a connection is from localhost:portA to localhost:portB, he doesn't parse the receiver port (portB)
-    # theoretically this port will be parsed when one packet will be sent in the opposit direction (localhost:portB -> localhost:portA)
     elif dh == me or dh in localhost:
         port = dp
     
@@ -34,7 +32,16 @@ def portInsert(me, sh, sp, dh, dp):
         portMapping[port] = pid
         return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
     else:
-        return 'OK'    
+        return 'OK'
+
+def initializePortMapping(ports):
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
+    ports = 
+    for port in ports:
+        if port not in portMapping:
+            pid = getPidByPort(port)
+            portMapping[port] = pid
+            requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -88,6 +95,7 @@ if __name__ == "__main__":
     init_interval = True
 
     stormSlots = getStormSlots(args.storm_conf)
+    thread.start_new_thread(initializePortMapping, (stormSlots,))
     
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
