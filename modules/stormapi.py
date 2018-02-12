@@ -12,6 +12,7 @@ class StormCollector():
         
         self.connected = False
         self.lastConnected = 0
+        self.lastUpdate = 0
 
         self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
         self.topoUrl = self.baseUrl + '/topology'
@@ -52,6 +53,7 @@ class StormCollector():
                     self.workers[topoId] = self.getTopologyWorkers(topoId)
                     self.components[topoId] = self.getTopologyComponents(topoId) 
                     self.executors[topoId] = self.getTopologyExecutors(topoId)
+            self.lastUpdate = time.time()
 
     def getTopologyList(self):
         url = self.summUrl
