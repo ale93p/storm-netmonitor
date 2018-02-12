@@ -67,7 +67,7 @@ def getTopoNetwork(addrs, ports, time):
         and ts > ' + str(time) + '\
         group by probes.connection \
         order by bytes desc'
-
+    print(query)
     cur = db.execute(query)
     return cur.fetchall()
 
@@ -169,13 +169,15 @@ def conn_view():
 
 @app.route('/topo_view')
 def topo_view():
-    now = time.time() 
-    if storm.lastUpdate - now > 600 or not storm.topologies or not storm.workers or len(storm.workers) < 0: storm.reload()
+    now = time.time()
+    if now - storm.lastUpdate > 600: 
+        print(storm.lastUpdate - now)
+        storm.reload()
     topoSummary = []
 
     if storm.topologies:
         for topo in storm.topologies:
-            if storm.workers[topo] and len(storm.workers[topo]) > 0:
+            if storm.lastUpdate > 0 and storm.workers[topo] and len(storm.workers[topo]) > 0:
                 net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
                 topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
             else: topoSummary.append((topo, storm.topologies[topo], 'scheduling...', 'ND', 'ND'))

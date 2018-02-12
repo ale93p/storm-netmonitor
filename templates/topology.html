@@ -9,7 +9,7 @@
             {% for t in topo_summary: %}
                 
                 <tr>
-                    {% if t[2] != 0 %}
+                    {% if t[2] != "scheduling..." %}
                         <td><a href="{{ url_for('topo_network') }}?id={{ t[0] }}">{{ t[1] }}</a></td><td>{{ t[2] }}</td><td>{{ t[3] }}</td><td>{{ t[4] }}</td>
                     {% else %}
                         <td>{{ t[1] }}</td><td>{{ t[2] }}</td><td>{{ t[3] }}</td><td>{{ t[4] }}</td>
