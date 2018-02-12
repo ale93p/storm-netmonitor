@@ -177,8 +177,8 @@ def topo_view():
         for topo in storm.topologies:
             net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
             topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
-        topo_name=storm.topologies[topo]
-    return render_template('topology.html', topo_summary=topoSummary, topo_name=topo_name)
+
+    return render_template('topology.html', topo_summary=topoSummary)
 
 def getTopologyConnections(topoId, portMap):
     connections = []
