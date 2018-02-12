@@ -51,9 +51,11 @@ class StormCollector():
             if len(self.topologies) > 0:
                 for topoId in self.getTopologyIds():
                     self.workers[topoId] = self.getTopologyWorkers(topoId)
-                    self.components[topoId] = self.getTopologyComponents(topoId) 
-                    self.executors[topoId] = self.getTopologyExecutors(topoId)
-            self.lastUpdate = time.time()
+                    if self.workers[topoId]:
+                        self.components[topoId] = self.getTopologyComponents(topoId) 
+                        if self.components[topoId]:
+                            self.executors[topoId] = self.getTopologyExecutors(topoId)
+                            self.lastUpdate = time.time()
 
     def getTopologyList(self):
         url = self.summUrl
@@ -96,11 +98,13 @@ class StormCollector():
 
         res = requests.get(url)
         jsonData = res.json()
+        if "workers" in jsonData:
+            for worker in jsonData["workers"]:
+                times.append(worker["uptimeSeconds"])
 
-        for worker in jsonData["workers"]:
-            times.append(worker["uptimeSeconds"])
-
-        return min(times)
+            if times: return min(times)
+            else: return 0
+        else: return None
 
     
     def getTopologyWorkers(self, topoId):

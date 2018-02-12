@@ -170,13 +170,15 @@ def conn_view():
 @app.route('/topo_view')
 def topo_view():
     now = time.time() 
-    if storm.lastUpdate - now > 600: storm.reload()
+    if storm.lastUpdate - now > 600 or not storm.topologies or not storm.workers or len(storm.workers) < 0: storm.reload()
     topoSummary = []
-    topo_name = None
+
     if storm.topologies:
         for topo in storm.topologies:
-            net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
-            topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
+            if storm.workers or len(storm.workers) > 0:
+                net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
+                topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
+            else: topoSummary.append((topo, storm.topologies[topo], 'scheduling...', 'ND', 'ND'))
 
     return render_template('topology.html', topo_summary=topoSummary)
 
