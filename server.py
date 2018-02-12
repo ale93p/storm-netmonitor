@@ -15,7 +15,6 @@ schema_dir = 'database/schema.sql'
 nimbus_address = 'sdn1.i3s.unice.fr'
 localhost = ['127.0.0.1','127.0.1.1'] 
 
-
 storm = StormCollector(nimbus_address)
 
 app = Flask(__name__)
@@ -170,7 +169,8 @@ def conn_view():
 
 @app.route('/topo_view')
 def topo_view():
-    storm.reload()
+    now = time.time() 
+    if storm.lastUpdate - now > 600: storm.reload()
     topoSummary = []
     for topo in storm.topologies:
         net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
@@ -249,17 +249,22 @@ def getPortMap():
 
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
-    
+    connections = workers = "Error"
+    topo_name = "No ID Selected"
     if request.args['id']:
         topoId = request.args['id']
-        storm.reload()
+        
+        now = time.time() 
+        if storm.lastUpdate - now > 600: storm.reload()
 
         portMap = getPortMap()
         workers = getWorkersView(topoId, portMap)
         connections = getTopologyConnections(topoId, portMap)
+
+    topo_name = storm.topologies[topoId] + " [" + topoId + "]" 
         
         
-    return render_template('topo_network.html', connections=connections, workers=workers, topo_name=storm.topologies[topoId])
+    return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
 
 def getConnection(sa,sp,da,dp):
     db = get_db()
