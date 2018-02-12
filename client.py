@@ -13,7 +13,6 @@ localhost = ['127.0.0.1', '127.0.1.1']
 portMapping = {}
 port_init = False
 stormSlots = []
-myIp = ""
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):  
     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
@@ -85,7 +84,7 @@ def sendData(trace):
         print("[DEBUG] Port Insert:",res) if args.debug else None
 
 if __name__ == "__main__":
-    global storm_slots
+    global storm_slots, myIp
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
-    global myIp
+    
     myIp = getMyIp()
 
     trace = {}
