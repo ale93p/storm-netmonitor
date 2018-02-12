@@ -172,10 +172,13 @@ def topo_view():
     now = time.time() 
     if storm.lastUpdate - now > 600: storm.reload()
     topoSummary = []
-    for topo in storm.topologies:
-        net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
-        topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
-    return render_template('topology.html', topo_summary=topoSummary, topo_name=storm.topologies[topo])
+    topo_name = None
+    if storm.topologies:
+        for topo in storm.topologies:
+            net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
+            topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
+        topo_name=storm.topologies[topo]
+    return render_template('topology.html', topo_summary=topoSummary, topo_name=topo_name)
 
 def getTopologyConnections(topoId, portMap):
     connections = []
