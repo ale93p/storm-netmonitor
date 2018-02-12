@@ -135,6 +135,6 @@ if __name__ == "__main__":
                 start_interval = now
                 print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
-                thread.start_new_thread(sendData, tuple(trace))    
+                thread.start_new_thread(sendData, (trace,))    
                 
                 trace = {} 
