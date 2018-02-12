@@ -34,7 +34,7 @@ class StormCollector():
             print("Checking Storm Connection... ", end="",flush=True)
             self.lastConnected = now
             try:
-                if check_call(['ping','-c1',self.address], stdout=DEVNULL, stderr=STDOUT) is 0:
+                if check_call(['ping','-c1','-W1000',self.address], stdout=DEVNULL, stderr=STDOUT) is 0:
                     self.connected = True
                     print("OK")
                     return True
