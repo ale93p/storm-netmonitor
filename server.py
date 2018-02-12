@@ -175,7 +175,7 @@ def topo_view():
 
     if storm.topologies:
         for topo in storm.topologies:
-            if storm.workers and len(storm.workers) > 0:
+            if storm.workers[topo] and len(storm.workers[topo]) > 0:
                 net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
                 topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
             else: topoSummary.append((topo, storm.topologies[topo], 'scheduling...', 'ND', 'ND'))
