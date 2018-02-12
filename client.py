@@ -13,20 +13,21 @@ localhost = ['127.0.0.1', '127.0.1.1']
 portMapping = {}
 port_init = False
 stormSlots = []
+myIp = ""
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):  
     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
-def portInsert(me, sh, sp, dh, dp):
-    
+def portInsert(sh, sp, dh, dp):
+    global myIp
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     port = ''
     pid = ''
-    if sh == me or sh in localhost:
+    if sh == myIp or sh in localhost:
         port = sp
-    elif dh == me or dh in localhost:
+    elif dh == myIp or dh in localhost:
         port = dp
     
     if port not in portMapping:
@@ -68,17 +69,19 @@ def getPidByPort(port):
 def getMyIp():
     return requests.get('https://api.ipify.org/?format=json').json()['ip']
 
-def sendData(trace, myIp):
+def sendData(trace):
+    global myIp
     global port_init, stormSlots
     now = time.time()
     print('[DEBUG] newT:',now) if args.debug else None
     for key in trace:
-        res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-        print('[DEBUG] send:',time.time()) if args.debug else None
-        print("[DEBUG] Network Insert:",res) if args.debug else None
+        if key[3] in stormSlots:
+            res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
+            print('[DEBUG] send:',time.time()) if args.debug else None
+            print("[DEBUG] Network Insert:",res) if args.debug else None
 
         if not port_init: initializePortMapping(stormSlots)
-        res = portInsert(myIp, key[0],key[1],key[2],key[3])
+        res = portInsert(key[0],key[1],key[2],key[3])
         print("[DEBUG] Port Insert:",res) if args.debug else None
 
 if __name__ == "__main__":
@@ -96,6 +99,7 @@ if __name__ == "__main__":
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
     serverPort = args.server_port[0] if args.server_port else '5000'
+    global myIp
     myIp = getMyIp()
 
     trace = {}
@@ -111,9 +115,9 @@ if __name__ == "__main__":
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
-        #if p.sp in stormSlots or p.dp in stormSlots:
+        if p.sp in stormSlots or p.dp in stormSlots:
         # Filter out ACK direction
-        if p.dp in stormSlots:    
+        #if p.dp in stormSlots:    
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
@@ -132,6 +136,6 @@ if __name__ == "__main__":
                 start_interval = now
                 print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
-                thread.start_new_thread(sendData, (trace, myIp))    
+                thread.start_new_thread(sendData, (trace))    
                 
                 trace = {} 
