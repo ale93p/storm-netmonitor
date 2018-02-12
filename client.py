@@ -11,6 +11,8 @@ import _thread as thread
 
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
+port_init = False
+stormSlots = []
 
 def networkInsert(ts, sh, sp, dh, dp, pk, by):  
     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
@@ -35,6 +37,7 @@ def portInsert(me, sh, sp, dh, dp):
         return 'OK'
 
 def initializePortMapping(ports):
+    global port_init
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     for port in ports:
         if port not in portMapping:
@@ -42,6 +45,7 @@ def initializePortMapping(ports):
             if pid:
                 portMapping[port] = pid
                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+                port_init = True
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -65,17 +69,21 @@ def getMyIp():
     return requests.get('https://api.ipify.org/?format=json').json()['ip']
 
 def sendData(trace, myIp):
+    global port_init, stormSlots
     now = time.time()
     print('[DEBUG] newT:',now) if args.debug else None
     for key in trace:
         res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
         print('[DEBUG] send:',time.time()) if args.debug else None
         print("[DEBUG] Network Insert:",res) if args.debug else None
-	
+
+        if not port_init: initializePortMapping(stormSlots)
         res = portInsert(myIp, key[0],key[1],key[2],key[3])
         print("[DEBUG] Port Insert:",res) if args.debug else None
 
 if __name__ == "__main__":
+    global storm_slots
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
@@ -103,8 +111,9 @@ if __name__ == "__main__":
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
-        if p.sp in stormSlots or p.dp in stormSlots:
-            
+        #if p.sp in stormSlots or p.dp in stormSlots:
+        # Filter out ACK direction
+        if p.dp in stormSlots:    
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
