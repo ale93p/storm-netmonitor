@@ -55,7 +55,9 @@ class StormCollector():
                         self.components[topoId] = self.getTopologyComponents(topoId) 
                         if self.components[topoId]:
                             self.executors[topoId] = self.getTopologyExecutors(topoId)
-                            self.lastUpdate = time.time()
+                
+                if len(self.workers) > 0:
+                    self.lastUpdate = time.time()
 
     def getTopologyList(self):
         url = self.summUrl
