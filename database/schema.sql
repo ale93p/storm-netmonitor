@@ -26,3 +26,31 @@ create table port_mapping (
     port text,
     pid text
 );
+
+create table topology (
+    ID text primary key,
+    name text
+);
+
+create table worker (
+    host text,
+    port text,
+    topoID text,
+    primary key(host, port),
+    foreign key(topoID) references topology(ID)
+);
+
+create table component(
+    ID text primary key,
+    topoID text,
+    foreign key(topoID) references topology(ID)
+);
+
+create table executor (
+    executor text primary key,
+    host text,
+    port text,
+    component text,
+    foreign key (host,port) references worker(host, port),
+    foreign key (component) references component(ID)
+);
