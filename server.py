@@ -472,14 +472,12 @@ def portInsert():
     print ("[VERBOSE] Received from ",client," at ",str(ts),": ", port," <-> ", pid, sep='') if args.verbose else None
     
     p = getPort(client, port)
-    if p and pid == p[0][0]: pass
-    else:
-        if not p:
-            query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
-            connId = insert_db(query)
-        else:
-            query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
-            insert_db(query)
+    if not p:
+        query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
+        connId = insert_db(query)
+    elif p[0][0] != pid: #update the database with the new pid (should happen only if the worker crashes)
+        query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
+        insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"

@@ -29,8 +29,9 @@ def portInsert(sh, sp, dh, dp):
     elif dh == myIp or dh in localhost:
         port = dp
     
-    if port not in portMapping:
-        pid = getPidByPort(port)
+    pid = getPidByPort(port)
+    if port not in portMapping or portMapping[port] != pid:
+        # sobstitute the old pid with the new one (temporary solution)  
         portMapping[port] = pid
         return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
     else:
