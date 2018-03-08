@@ -16,6 +16,7 @@ nimbus_address = 'sdn1.i3s.unice.fr'
 localhost = ['127.0.0.1','127.0.1.1'] 
 
 storm = StormCollector(nimbus_address)
+gotFromDb = False
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -58,20 +59,20 @@ def getSummary():
     cur = db.execute(query)
     return cur.fetchall()
 
-def getTopoNetwork(addrs, ports, time):
+def getTopoNetwork(addrs, ports):#, time):
     db = get_db()
     query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) \
         from connections, probes \
         where connections.ID == probes.connection and \
         ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
-        and ts > ' + str(time) + '\
         group by probes.connection \
         order by bytes desc'
-    print(query)
+
+        #and ts > ' + str(time) + '\
     cur = db.execute(query)
     return cur.fetchall()
 
-def getWorkerDataIn(addr, ports, time):
+def getWorkerDataIn(addr, ports):#, time):
 
     if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
 
@@ -80,16 +81,17 @@ def getWorkerDataIn(addr, ports, time):
         from connections, probes \
         where connections.ID == probes.connection \
         and (dst_addr = \'' + str(addr) + '\' and dst_port in ' + str(ports) + ') \
-        and ts > ' + str(time) + '\
         group by dst_addr'
+        
+        # and ts > ' + str(time) + '\
+        
 
     cur = db.execute(query)
     data = cur.fetchone()
 
     return data[0] if data else -1
 
-
-def getWorkerDataOut(addr, ports, time):
+def getWorkerDataOut(addr, ports):# , time):
 
     if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
 
@@ -98,8 +100,9 @@ def getWorkerDataOut(addr, ports, time):
         from connections, probes \
         where connections.ID == probes.connection \
         and (src_addr = \'' + str(addr) + '\' and src_port in ' + str(ports) + ') \
-        and ts > ' + str(time) + '\
         group by src_addr'
+        
+        # and ts > ' + str(time) + '\
 
     cur = db.execute(query)
     data = cur.fetchone()
@@ -136,6 +139,142 @@ def get_db():
         g.sqlite_db = connect_db()
     return g.sqlite_db
 
+def updateStormDb():
+    db = get_db()
+
+    #### update supervisor table
+    query = 'SELECT host, uptime FROM supervisor'
+    cur = db.execute(query)
+    hostsInDb = {r[0]:r[1] for r in cur.fetchall()}
+    for s in storm.supervisors:
+        if s[0] in [k for k in hostsInDb]:
+            if hostsInDb[s[0]] != str(s[1]):
+                ### update
+                query = 'UPDATE supervisor SET uptime = ' + str(s[1]) + ' WHERE host = \'' + s[0] + '\''
+                db.execute(query)
+                db.commit()
+        else:
+            ### insert
+            query = 'INSERT INTO supervisor (host, uptime) VALUES (\'' + s[0] + '\',' + str(s[1]) + ')'
+            db.execute(query)
+            db.commit()
+            
+    #### update topology table
+    query = 'SELECT ID, name FROM topology'
+    cur = db.execute(query)
+    topologiesInDb = {r[0]:r[1] for r in cur.fetchall()}
+    for t in storm.topologies:
+        if t not in [k for k in topologiesInDb]:
+            ### insert
+            query = 'INSERT INTO topology (ID, name) VALUES (\'' + t + '\',\'' + storm.topologies[t] + '\')'
+            db.execute(query)
+            db.commit()
+
+    #### update workers table
+    query = 'SELECT host, port, topoID FROM worker'
+    cur = db.execute(query)
+    workersInDb = [(r[0],r[1],r[2]) for r in cur.fetchall()]
+    for topo in storm.workers: ## worker[topoId] = [(host,port),(host,port),...]
+        if sorted(storm.workers[topo]) != sorted([(e[0],int(e[1])) for e in workersInDb if e[2] == topo]):
+            ### if the two lists are not equal it means: (A) there is a new worker, (B) thre isn't anymore an old worker
+            ### is it always true? storm can't add new workers on runtime, a crashed worker will come up again with same host and port
+            ### if the two lists are not equal it means: there arent' the workers of this topology in the database, so:
+            ### insert
+            for couple in storm.workers[topo]:
+                query = 'INSERT INTO worker (host, port, topoID) VALUES (\'' + couple[0] + '\',\'' + str(couple[1]) + '\',\'' + topo + '\')'
+                db.execute(query)
+                db.commit()
+            
+    #### update component table
+    query = 'SELECT ID, topoID FROM component'
+    cur = db.execute(query)
+    componentsInDb = [(r[0],r[1]) for r in cur.fetchall()]
+    for topo in storm.components: ## component[topoId] = [spout,spout,bolt,bolt,...]
+        if sorted(storm.components[topo]) != sorted([e[0] for e in componentsInDb if e[1] == topo]):
+            ### same as above
+            ### insert
+            for c in storm.components[topo]:
+                query = 'INSERT INTO component (ID, topoID) VALUES (\'' + c + '\',\'' + topo + '\')'
+                db.execute(query)
+                db.commit()
+    
+    #### update executor table 
+    query = 'SELECT executor, host, port, component FROM executor'
+    cur = db.execute(query)
+    executorsInDb = {r[3]:(r[0],r[1],r[2]) for r in cur.fetchall()}
+    for topo in storm.executors: ## executor[topoId][component] = [(id,host,port),(id,host,port),...]
+        for component in storm.executors[topo]:
+            for e in storm.executors[topo][component]:
+                if component not in executorsInDb:
+                    query = 'INSERT INTO executor (executor, host, port, component) ' + \
+                            'VALUES (\'' + e[0] + '\',\'' + e[1] + '\',\'' + str(e[2]) + '\',\'' + component + '\')'
+                elif executorsInDb[component][1] != e[1] and executorsInDb[component][2] != e[2]:
+                    query = 'UPDATE executor ' + \
+                            'SET host = \'' + e[1] + '\' AND port = \'' + str(e[2]) + '\' ' + \
+                            'WHERE executor = \'' + e[0] + '\' AND component = \'' + component + '\'' 
+                db.execute(query)
+                db.commit()
+
+def checkStormDb():
+    global gotFromDb
+    print('Retreiving data from local DB... ', end='')
+    ### follow storm.reload() scheme
+    db = get_db()
+    ### get supervisors data
+    query = 'SELECT host, uptime FROM supervisor'
+    cur = db.execute(query)
+    storm.supervisors = [(r[0],r[1]) for r in cur.fetchall()]
+    ### get topologies
+    if len(storm.supervisors) > 0:
+        query = 'SELECT ID, name FROM topology'
+        cur = db.execute(query)
+        storm.topologies = {r[0]:r[1] for r in cur.fetchall()}
+        if len(storm.topologies) > 0:
+            for topo in storm.topologies:
+            ### if there are topologies get workers
+                query = 'SELECT host, port FROM worker WHERE topoID = \'' + topo + '\''
+                cur = db.execute(query)
+                storm.workers[topo] = [(r[0],r[1]) for r in cur.fetchall()]
+            ### get components of the topology
+                query = 'SELECT ID FROM component WHERE topoID = \'' + topo + '\''
+                cur = db.execute(query)
+                storm.components[topo] = [r[0] for r in cur.fetchall()]
+            ### get executors for each component 
+                ## problem: same name components from different topologies, filter by host and port
+                storm.executors[topo] = {}
+                for compo in storm.components[topo]:
+                    hosts = tuple(w[0] for w in storm.workers[topo])
+                    ports = tuple(w[1] for w in storm.workers[topo])
+                    query = 'SELECT executor, host, port FROM executor WHERE component = \'' + compo + '\'' + \
+                            'AND host IN ' + str(hosts) + ' AND port IN ' + str(ports) 
+                    cur = db.execute(query)
+                    storm.executors[topo][compo] = [(r[0],r[1],r[2]) for r in cur.fetchall()]
+        else:
+            print('FAILED (no topo in db)') 
+            return False ## no topologies in the database
+    else:
+        print('FAILED (no supervisors in db)')  
+        return False ## update failed at supervisors
+    
+    print('SUCCESS')
+    return True
+
+def reload_storm():
+    global storm, storm_offline, gotFromDb
+    now = time.time()
+    res = True
+    if now - storm.lastUpdate > 600: 
+        print(storm.lastUpdate - now)
+        res = storm.reload()
+        if res: 
+            updateStormDb()
+            gotFromDb = False
+            
+    if len(storm.topologies) < 1 or not res:
+        ### use storm_offline, if not present: 
+        ### check in the database
+        gotFromDb = checkStormDb()
+
 @app.teardown_appcontext
 def close_db(error):
     """Closes the database again at the end of the request."""
@@ -152,7 +291,6 @@ def init_db():
 def init():
     init_db() if args.initdb else None
     
-
 @app.route("/")
 @app.route("/index")
 @app.route("/conn_view")
@@ -169,16 +307,17 @@ def conn_view():
 
 @app.route('/topo_view')
 def topo_view():
-    now = time.time()
-    if now - storm.lastUpdate > 600: 
-        print(storm.lastUpdate - now)
-        storm.reload()
+    global storm, storm_offline
+
+    reload_storm()
+
     topoSummary = []
 
     if storm.topologies:
         for topo in storm.topologies:
-            if storm.lastUpdate > 0 and storm.workers[topo] and len(storm.workers[topo]) > 0:
-                net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo), time.time() - storm.getLastUp(topo)))
+            print(storm.lastUpdate, gotFromDb, storm.workers[topo], len(storm.workers[topo]))
+            if (storm.lastUpdate > 0 or gotFromDb) and storm.workers[topo] and len(storm.workers[topo]) > 0:
+                net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo)))#, time.time() - storm.getLastUp(topo)))
                 topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
             else: topoSummary.append((topo, storm.topologies[topo], 'scheduling...', 'ND', 'ND'))
 
@@ -187,7 +326,7 @@ def topo_view():
 def getTopologyConnections(topoId, portMap):
     connections = []
 
-    net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId), time.time() - storm.getLastUp(topoId))
+    net = getTopoNetwork(storm.getWorkersAddr(topoId), storm.getWorkersPort(topoId))#, time.time() - storm.getLastUp(topoId))
     for row in net:
         
         sourceWorker = storm.getNameByIp(row[1])
@@ -217,6 +356,8 @@ def getTopologyConnections(topoId, portMap):
 def getWorkersView(topoId, portMap):
     executors = {}
     
+    reload_storm()
+
     for worker in storm.workers[topoId]:
         executors[(worker[0], worker[1])] = []
 
@@ -232,8 +373,8 @@ def getWorkersView(topoId, portMap):
             pid = portMap[(ip, str(element[1]))]
             ports = [k[1] for k,v in portMap.items() if v==str(pid)]
 
-        in_data = getWorkerDataIn(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
-        out_data = getWorkerDataOut(ip, tuple(ports), time.time() - storm.getLastUp(topoId))
+        in_data = getWorkerDataIn(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
+        out_data = getWorkerDataOut(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
 
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))] 
@@ -256,13 +397,13 @@ def getPortMap():
 
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
+    global storm, storm_offline
     connections = workers = "Error"
     topo_name = "No ID Selected"
     if request.args['id']:
         topoId = request.args['id']
         
-        now = time.time() 
-        if storm.lastUpdate - now > 600: storm.reload()
+        reload_storm()
 
         portMap = getPortMap()
         workers = getWorkersView(topoId, portMap)

@@ -1,6 +1,11 @@
 drop table if exists connections;
 drop table if exists probes;
 drop table if exists port_mapping;
+drop table if exists supervisor;
+drop table if exists topology;
+drop table if exists worker;
+drop table if exists component;
+drop table if exists executor;
 
 create table connections (
     ID integer primary key autoincrement,
@@ -25,6 +30,11 @@ create table port_mapping (
     addr text,
     port text,
     pid text
+);
+
+create table supervisor (
+    host text primary key,
+    uptime real
 );
 
 create table topology (

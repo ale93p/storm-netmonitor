@@ -25,7 +25,7 @@ class StormCollector():
         self.components = {}
         self.executors = {}
 
-        self.reload()
+        #self.reload()
 
     def isConnected(self):
         
@@ -48,6 +48,7 @@ class StormCollector():
         all_updated = True
         if self.isConnected():
             self.supervisors = self.getStormSupervisors()
+            if self.supervisors == -1: self.connected = False
             self.topologies = self.getTopologyList()
             if len(self.topologies) > 0:
                 for topoId in self.getTopologyIds():
@@ -64,6 +65,9 @@ class StormCollector():
                 if all_updated:
                     self.lastUpdate = time.time()
                     print("UPDATED:",self.lastUpdate)
+                    return True
+                else:
+                    return False
 
     def getTopologyList(self):
         url = self.summUrl
