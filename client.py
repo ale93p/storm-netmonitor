@@ -3,11 +3,10 @@ import yaml
 import json
 import time
 import argparse
+import psutil
+import _thread as thread
 from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
-import psutil
-
-import _thread as thread
 
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}

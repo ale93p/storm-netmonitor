@@ -1,15 +1,13 @@
-from flask import Flask, jsonify, request, abort, render_template, g
-from modules.stormapi import StormCollector
+from flask import Flask, jsonify, request, abort, render_template, g 
 import argparse
-import csv
-import os.path
-import socket
 import time, datetime
 import sqlite3
-
+#import csv
+from os.path import join #, isfile
+from modules.stormapi import StormCollector
 
 start_time = time.time()
-filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
+#filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
 nimbus_address = 'sdn1.i3s.unice.fr'
@@ -21,7 +19,7 @@ gotFromDb = False
 app = Flask(__name__)
 app.config.from_object(__name__)
 app.config.update(dict(
-    DATABASE=os.path.join(app.root_path, db_dir),
+    DATABASE=join(app.root_path, db_dir),
     SECRET_KEY='development key',
     USERNAME='admin',
     PASSWORD='default'
@@ -44,14 +42,14 @@ def humansize(n, bytes=True):
 
     return '%s %s' % (f, suffixes[i])
 
-def writeToCsv(d): 
-    title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
-    if len(d) != len(title_row): raise Exception('Data lenght not matching')
-    newfile = not os.path.isfile(filename)
-    with open(filename, 'a', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        if newfile: csvwriter.writerow(title_row)
-        csvwriter.writerow(d)
+#def writeToCsv(d): 
+#    title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
+#    if len(d) != len(title_row): raise Exception('Data lenght not matching')
+#    newfile = not isfile(filename)
+#    with open(filename, 'a', newline='') as csvfile:
+#        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+#        if newfile: csvwriter.writerow(title_row)
+#        csvwriter.writerow(d)
 
 def getSummary():
     db = get_db()
