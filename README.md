@@ -11,11 +11,13 @@ netmonitor for Storm helps you to collect network statistics from your Storm clu
      $ sudo pip3 install flask
      ```
 
-* folloeing modules on client:
+* following modules on client:
   
-  * requests: `$ sudo pip3 install requests`
+    * requests: `$ sudo pip3 install requests`
+    
+    * psutil: `$ sudo pip3 install psutil`
   
-  * PyYAML: [here](https://github.com/yaml/pyyaml)
+    * PyYAML: [here](https://github.com/yaml/pyyaml)
 
 ### Features ###
 
@@ -26,10 +28,15 @@ The module `tcpprobe.py` is used to manage data collected through [tcp_probe](ht
 - a parser: to read and make usable the data in a packet line of tcp_probe
 - an aggregator: to aggregate values for a specific TCP connection (integrating with dictionaries): total amount of packets and total amount data in those packets
 
+### stormapi module ###
+
+Set of functions used to retrieve informations from the storm cluster APIs in a custom storm class. 
+(postmortem update) This data is then stored in the database for further analysis.
+
 #### Client-Server Architecture ####
 
 * The clients obtain data through tcpprobe, aggregates it, and sends it to the server each 10 seconds
-* The server receives data from the clients, through ReST APIs, and store them in a local SQLite database (v0.2.0+)
+* The server receives data from the clients, through ReST APIs, and store them in a local SQLite database (v0.2.0+): network data, storm cluster informations (from postmortem update)
 
 ### How to run it ###
 
@@ -44,7 +51,7 @@ $ python3 server.py
 
 _on each client_:
 
-* First, tcp_probe have to be configured on(as *_sudo_*):
+* **MODPROBE CONFIGURATION**: First, tcp_probe has to be configured on(as *_sudo_*):
     
 ```
 # modprobe -r tcp_probe
