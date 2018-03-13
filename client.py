@@ -23,18 +23,17 @@ def portInsert(sh, sp, dh, dp):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     port = ''
     pid = ''
-    if sh == myIp or sh in localhost:
-        port = sp
-    elif dh == myIp or dh in localhost:
-        port = dp
+    if sh == myIp or sh in localhost: port = sp
+    elif dh == myIp or dh in localhost: port = dp
     
     pid = getPidByPort(port)
-    if port not in portMapping or portMapping[port] != pid:
-        # sobstitute the old pid with the new one (temporary solution)  
-        portMapping[port] = pid
-        return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-    else:
-        return 'OK'
+    if pid != None:
+        if port not in portMapping or portMapping[port] != pid:
+            # sobstitute the old pid with the new one (temporary solution)  
+            portMapping[port] = pid
+            return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+        else:
+            return 'OK'
 
 def initializePortMapping(ports):
     global port_init
