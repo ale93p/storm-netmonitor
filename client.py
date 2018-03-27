@@ -21,16 +21,16 @@ def networkInsertFull(now, trace):
     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
     payload = {}
     for key in trace:
-        # if key[3] in stormSlots + [zkPort] or key[1] == zkPort: 
-        payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
+        if key[3] in stormSlots + [zkPort] or key[1] == zkPort: #check why it doesn't work
+            payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
 
-def networkInsert(ts, sh, sp, dh, dp, pk, by):  
-    """ deprecate """
-    #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
-    return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
+# def networkInsert(ts, sh, sp, dh, dp, pk, by):  
+#     """ deprecate """
+#     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
+#     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
 def generatePortPayload(trace):
     global myIp
@@ -42,18 +42,18 @@ def generatePortPayload(trace):
     for key in trace:
         sh = key[0]
         # sp = key[1]
-        dh = key[2]
+        dh = key[2] 
         # dp = key[3]
         if sh in localhost + [myIp]:
             port = key[1]
-            direction = 'snd'
+            pos = 'snd'
         elif dh in localhost + [myIp]:
             port = key[3]
-            direction = 'rcv'
+            pos = 'rcv'
         
         if port not in already_done:
             already_done.append(port)
-            pid = getPidByPort(port,direction)
+            pid = getPidByPort(port,pos)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
@@ -93,7 +93,7 @@ def initializePortMappingFull(ports):
     payload = {}
     for port in ports:
         if port not in portMapping:
-            pid = getPidByPort(port, 'snd')
+            pid = getPidByPort(port, 'rcv')
             if pid:
                 portMapping[port] = pid
                 payload[port] = pid
@@ -101,17 +101,17 @@ def initializePortMappingFull(ports):
     
     if port_init: return requests.post(url, data = payload)
 
-def initializePortMapping(ports):
-    """ deprecate """
-    global port_init
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-    for port in ports:
-        if port not in portMapping:
-            pid = getPidByPort(port,'snd')
-            if pid:
-                portMapping[port] = pid
-                requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-                port_init = True
+# def initializePortMapping(ports):
+#     """ deprecate """
+#     global port_init
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
+#     for port in ports:
+#         if port not in portMapping:
+#             pid = getPidByPort(port,'rcv')
+#             if pid:
+#                 portMapping[port] = pid
+#                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+#                 port_init = True
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -126,17 +126,21 @@ def getStormSlots(conf):
     f = open(conf, 'r')
     return yaml.load(f)['supervisor.slots.ports']
 
-def getPidByPort(port, direction):
+def getPidByPort(port, pos):
     # for p in psutil.net_connections('tcp'):
     #     if p.laddr and str(p.laddr.port) == str(port):
     #         return p.pid
     # cmd = 'lsof -n -i :' + str(port)
-    if direction == 'snd': cmd = "ss -ptn sport = :" + str(port)
-    elif direction == 'rcv': cmd = "ss -ptn rport = :" + str(port)
+    if pos == 'snd': cmd = "ss -ptn sport = :" + str(port)
+    elif pos == 'rcv': cmd = "ss -ptn rport = :" + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
-    return str(out)[2:].split('\\n')[1].split("pid=")[1].split(",fd")[0]
-
+    try:
+        pid = str(out)[2:].split('\\n')[1].split("pid=")[1].split(",fd")[0]
+        return pid
+    except:
+        return None
+     
         
 def getMyIp():
     return requests.get('https://api.ipify.org/?format=json').json()['ip']
