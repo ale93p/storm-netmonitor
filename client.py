@@ -46,12 +46,14 @@ def generatePortPayload(trace):
         # dp = key[3]
         if sh in localhost + [myIp]:
             port = key[1]
+            direction = 'snd'
         elif dh in localhost + [myIp]:
             port = key[3]
+            direction = 'rcv'
         
         if port not in already_done:
             already_done.append(port)
-            pid = getPidByPort(port)
+            pid = getPidByPort(port,direction)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
@@ -105,7 +107,7 @@ def initializePortMapping(ports):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     for port in ports:
         if port not in portMapping:
-            pid = getPidByPort(port)
+            pid = getPidByPort(port,'snd')
             if pid:
                 portMapping[port] = pid
                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
@@ -124,14 +126,16 @@ def getStormSlots(conf):
     f = open(conf, 'r')
     return yaml.load(f)['supervisor.slots.ports']
 
-def getPidByPort(port):
+def getPidByPort(port, direction):
     # for p in psutil.net_connections('tcp'):
     #     if p.laddr and str(p.laddr.port) == str(port):
     #         return p.pid
-    cmd = 'lsof -n -i :' + str(port)
+    # cmd = 'lsof -n -i :' + str(port)
+    if direction == 'snd': cmd = "ss -ptn sport = :" + port
+    elif direction == 'rcv': cmd = "ss -ptn rport = :" + port
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
-    return str(out)[2:].split('\\n')[1].split()[1]
+    return str(out)[2:].split('\\n')[1].split("pid=")[1].split(",fd")[0]
 
         
 def getMyIp():
