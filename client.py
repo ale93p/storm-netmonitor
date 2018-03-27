@@ -128,7 +128,7 @@ def getPidByPort(port):
     # for p in psutil.net_connections('tcp'):
     #     if p.laddr and str(p.laddr.port) == str(port):
     #         return p.pid
-    cmd = 'lsof -n -i :' + port
+    cmd = 'lsof -n -i :' + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
     return str(out)[2:].split('\\n')[1].split()[1]
