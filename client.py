@@ -69,23 +69,23 @@ def portInsertFull(trace):
     payload = generatePortPayload(trace)
     if payload: return requests.post(url, data = payload)
 
-def portInsert(sh, sp, dh, dp):
-    """ deprecate """
-    global myIp
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-    port = ''
-    pid = ''
-    if sh == myIp or sh in localhost: port = sp
-    elif dh == myIp or dh in localhost: port = dp
+# def portInsert(sh, sp, dh, dp):
+#     """ deprecate """
+#     global myIp
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
+#     port = ''
+#     pid = ''
+#     if sh == myIp or sh in localhost: port = sp
+#     elif dh == myIp or dh in localhost: port = dp
     
-    pid = getPidByPort(port)
-    if pid:
-        if port not in portMapping or portMapping[port] != pid:
-            # sobstitute the old pid with the new one (temporary solution)  
-            portMapping[port] = pid
-            return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-        else:
-            return 'OK'
+#     pid = getPidByPort(port)
+#     if pid:
+#         if port not in portMapping or portMapping[port] != pid:
+#             # sobstitute the old pid with the new one (temporary solution)  
+#             portMapping[port] = pid
+#             return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+#         else:
+#             return 'OK'
 
 def initializePortMappingFull(ports):
     global port_init
@@ -93,7 +93,7 @@ def initializePortMappingFull(ports):
     payload = {}
     for port in ports:
         if port not in portMapping:
-            pid = getPidByPort(port)
+            pid = getPidByPort(port, 'snd')
             if pid:
                 portMapping[port] = pid
                 payload[port] = pid
