@@ -131,8 +131,8 @@ def getPidByPort(port, direction):
     #     if p.laddr and str(p.laddr.port) == str(port):
     #         return p.pid
     # cmd = 'lsof -n -i :' + str(port)
-    if direction == 'snd': cmd = "ss -ptn sport = :" + port
-    elif direction == 'rcv': cmd = "ss -ptn rport = :" + port
+    if direction == 'snd': cmd = "ss -ptn sport = :" + str(port)
+    elif direction == 'rcv': cmd = "ss -ptn rport = :" + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
     return str(out)[2:].split('\\n')[1].split("pid=")[1].split(",fd")[0]
