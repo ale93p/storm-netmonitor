@@ -52,7 +52,7 @@ def portInsertFull(trace):
     global myIp
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
     payload = generatePortPayload(trace)
-    return request.post(url, data = payload)
+    return requests.post(url, data = payload)
 
 def portInsert(sh, sp, dh, dp):
     """ deprecate """
@@ -84,7 +84,7 @@ def initializePortMappingFull(ports):
                 payload[port] = pid
 
     port_init = True
-    return request.post(url, data = payload)
+    return requests.post(url, data = payload)
 
 def initializePortMapping(ports):
     """ deprecate """
