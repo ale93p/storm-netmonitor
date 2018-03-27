@@ -52,7 +52,7 @@ def generatePortPayload(trace):
                 # sobstitute the old pid with the new one (temporary solution)  
                     portMapping[port] = pid
                     payload[port] = pid
-                else not_payload[port] = None
+                else: not_payload[port] = None
     print("payload in", time.time() - start)
     return payload
 
