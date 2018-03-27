@@ -99,7 +99,7 @@ def getWorkerDataOut(addr, ports):# , time):
         and (src_addr = \'' + str(addr) + '\' and src_port in ' + str(ports) + ') \
         group by src_addr'
     
-    print(query)
+    # print(query)
         # and ts > ' + str(time) + '\
 
     cur = db.execute(query)
@@ -516,6 +516,7 @@ def portInsert_v2():
         for key in request.form:
             port = key
             pid = request.form[key]
+            print(client,port,pid)
             portInsert(client, port, pid)
     except:
         print ("[ERROR] Wrong API request")
