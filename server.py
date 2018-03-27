@@ -83,7 +83,6 @@ def getWorkerDataIn(addr, ports):#, time):
         
         # and ts > ' + str(time) + '\
         
-
     cur = db.execute(query)
     data = cur.fetchone()
 
@@ -365,6 +364,7 @@ def getWorkersView(topoId, portMap):
             executors[(executor[1], executor[2])].append(str(component) + str(executor[0]))
 
     ret = [] 
+    print(executors)
     for element in executors:
         ip = storm.getIpByName(element[0])
         ports = [element[1]]
@@ -374,6 +374,7 @@ def getWorkersView(topoId, portMap):
 
         in_data = getWorkerDataIn(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
+        print(in_data, out_data)
 
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))] 
@@ -399,6 +400,7 @@ def topo_network():
     global storm, storm_offline
     connections = workers = "Error"
     topo_name = "No ID Selected"
+
     if request.args['id']:
         topoId = request.args['id']
     
@@ -419,7 +421,7 @@ def topo_network():
 def getConnection(sa,sp,da,dp):
     db = get_db()
     query = 'select ID, client from connections where src_addr == \'' + sa + '\' and src_port == \'' + sp + '\' and dst_addr == \'' + da + '\' and dst_port == \'' + dp + '\''
-    cur = db.execute(query)    
+    cur = db.execute(query)  
     r = list(cur.fetchall())
     if len(r) < 1: return None
     else: return r
@@ -430,13 +432,14 @@ def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
     if c and client != c[0][1]: pass
     else:
         if not c:
-            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + client + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
+            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + str(client) + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
             connId = insert_db(query)
         else: connId = c[0][0]
         query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
         insert_db(query)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
+
 
 @app.route("/api/v0.2/network/insert", methods=['POST'])
 def networkInsert_v2():
@@ -447,23 +450,24 @@ def networkInsert_v2():
             # ts = time.time()
             if key != "ts":
                 k = key[1:-1].split(',')
-                src_host = k[0]
-                src_port = k[1]
-                dst_host = k[2]
-                dst_port = k[3]
+                src_host = ''.join(k[0].split('\'')).strip()
+                src_port = ''.join(k[1].split('\'')).strip()
+                dst_host = ''.join(k[2].split('\'')).strip()
+                dst_port = ''.join(k[3].split('\'')).strip()
                 # print(src_host,src_port,dst_host,dst_port)
                 v = request.form[key].split(',')
                 pkts = v[0]
                 bts = v[1]
+
+                print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
+                netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
                 
     except:
-        print ("[ERROR] Wrong API request")
+        print ("[ERROR] : networkInsert_v2 : Wrong API request")
         abort(400)
         
-    print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
-    netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
-
     return "Ok"
+
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
 def networkInsert_v1():
@@ -516,7 +520,6 @@ def portInsert_v2():
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-
     return "Ok"
 
 @app.route("/api/v0.1/port/insert", methods=['GET'])
