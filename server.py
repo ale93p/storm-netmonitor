@@ -455,11 +455,12 @@ def networkInsert_v2():
                 v = request.form[key].split(',')
                 pkts = v[0]
                 bts = v[1]
-                print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
+                
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-
+        
+    print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
     netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
 
     return "Ok"
