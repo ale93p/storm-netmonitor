@@ -133,7 +133,7 @@ def sendData(trace):
     print('[DEBUG] send:',time.time()) if args.debug else None
     print("[DEBUG] Network Insert:",res) if args.debug else None
         #
-    if not port_init: initializePortMapping(stormSlots)
+    if not port_init: initializePortMappingFull(stormSlots)
     #    res = portInsert(key[0],key[1],key[2],key[3])
     res = portInsertFull(trace)
     #    print("[DEBUG] Port Insert:",res) if args.debug else None
