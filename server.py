@@ -361,7 +361,7 @@ def getWorkersView(topoId, portMap):
 
     for component in storm.components[topoId]:
         for executor in storm.executors[topoId][component]:
-            executors[(executor[1], executor[2])].append(component)
+            executors[(executor[1], executor[2])].append(str(component) + str(executor[0]))
 
     ret = [] 
     for element in executors:
@@ -424,7 +424,8 @@ def getConnection(sa,sp,da,dp):
 def networkInsert():
     try:
         client = request.remote_addr
-        ts = time.time()
+        # ts = time.time()
+        ts = request.args["ts"]
         src_host = request.args["src_host"]
         src_port = request.args["src_port"]
         dst_host = request.args["dst_host"]

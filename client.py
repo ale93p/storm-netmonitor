@@ -71,13 +71,15 @@ def sendData(trace):
     global myIp
     global port_init, stormSlots
     now = time.time()
+    
     print('[DEBUG] newT:',now) if args.debug else None
     for key in trace:
-        if key[3] in stormSlots:
-            res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-            print('[DEBUG] send:',time.time()) if args.debug else None
-            print("[DEBUG] Network Insert:",res) if args.debug else None
-
+        #if key[3] in stormSlots:
+        res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
+        
+        print('[DEBUG] send:',time.time()) if args.debug else None
+        print("[DEBUG] Network Insert:",res) if args.debug else None
+        #
         if not port_init: initializePortMapping(stormSlots)
         res = portInsert(key[0],key[1],key[2],key[3])
         print("[DEBUG] Port Insert:",res) if args.debug else None
@@ -121,6 +123,12 @@ if __name__ == "__main__":
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
+        elif p.sp == 2181 or p.dp ==2181: #ZooKeeper
+            if (p.sh, p.sp, p.dh, p.dp) not in trace:
+                trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
+                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
+            else:
+                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
         now = time.time()
         if init_interval:
@@ -129,8 +137,7 @@ if __name__ == "__main__":
                 print('[DEBUG] frst:',start_interval, time.time()) if args.debug else None
                 init_interval = not init_interval
 	
-        else:
-            if now - start_interval >= 10:
+        elif now - start_interval >= 10:
                 start_interval = now
                 print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
