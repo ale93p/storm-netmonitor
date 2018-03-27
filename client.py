@@ -161,7 +161,7 @@ if __name__ == "__main__":
     init_interval = True
 
     stormSlots = getStormSlots(args.storm_conf)
-    thread.start_new_thread(initializePortMapping, (stormSlots,))
+    thread.start_new_thread(initializePortMappingFull, (stormSlots,))
     
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
