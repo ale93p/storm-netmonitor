@@ -39,21 +39,24 @@ def generatePortPayload(trace):
     port = ''
     pid = ''
     for key in trace:
+        port = ''
         sh = key[0]
         # sp = key[1]
-        # dh = key[2]
+        dh = key[2]
         # dp = key[3]
-        if sh == myIp or sh in localhost:
-            # port = sp
+        if sh in localhost + [myIp]:
             port = key[1]
-            if port not in payload and port not in not_payload:
-                pid = getPidByPort(port)
-                if pid:
-                    if port not in portMapping or portMapping[port] != pid:
-                    # sobstitute the old pid with the new one (temporary solution)  
-                        portMapping[port] = pid
-                        payload[port] = pid
-                    else: not_payload[port] = None
+        elif dh in localhost + [myIp]:
+            port = key[3]
+        
+        if port and port not in payload + not_payload:
+            pid = getPidByPort(port)
+            if pid:
+                if port not in portMapping or portMapping[port] != pid:
+                # sobstitute the old pid with the new one (temporary solution)  
+                    portMapping[port] = pid
+                    payload[port] = pid
+                else: not_payload[port] = None
     print("length",len(trace),"payload in", time.time() - start)
     return payload
 
