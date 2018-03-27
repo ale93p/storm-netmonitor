@@ -132,7 +132,7 @@ def getPidByPort(port, pos):
     #         return p.pid
     # cmd = 'lsof -n -i :' + str(port)
     if pos == 'snd': cmd = "ss -ptn sport = :" + str(port)
-    elif pos == 'rcv': cmd = "ss -ptn rport = :" + str(port)
+    elif pos == 'rcv': cmd = "ss -ptn dport = :" + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
     try:
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
-    serverPort = args.server_port[0] if args.server_port else '5000'
+    serverPort = args.server_port if args.server_port else '5000'
     
     myIp = getMyIp()
 
