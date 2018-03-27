@@ -20,8 +20,8 @@ def networkInsertFull(now, trace):
     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
     payload = {}
     for key in trace:
-        if key[3] in stormSlots + [zkPort] or key[1] == zkPort: 
-            payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
+        # if key[3] in stormSlots + [zkPort] or key[1] == zkPort: 
+        payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
 
