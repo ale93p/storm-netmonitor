@@ -11,15 +11,16 @@ from modules.tcpprobe import ProbeParser, ProbeAggregator
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
 port_init = False
-stormSlots = []
 
+stormSlots = []
+zkPort = 2181
 
 def networkInsertFull(now, trace):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
     payload = {}
     for key in trace:
-        payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
+        if key[3] in stormSlots + [zkPort] or key[1] == zkPort: payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
 
@@ -176,7 +177,7 @@ if __name__ == "__main__":
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
             else:
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
-        elif p.sp == 2181 or p.dp ==2181: #ZooKeeper
+        elif p.sp == zkPort or p.dp ==zkPort: #ZooKeeper
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
