@@ -3,7 +3,8 @@ import yaml
 import json
 import time
 import argparse
-import psutil
+# import psutil
+import subprocess
 import _thread as thread
 from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
@@ -49,6 +50,7 @@ def generatePortPayload(trace):
             port = key[3]
         
         if port not in already_done:
+            already_done.append(port)
             pid = getPidByPort(port)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
@@ -56,7 +58,7 @@ def generatePortPayload(trace):
                     portMapping[port] = pid
                     payload[port] = pid
 
-            already_done.append(port)
+            
     print("length",len(trace),"payload in", time.time() - start)
     return payload
 
@@ -123,9 +125,14 @@ def getStormSlots(conf):
     return yaml.load(f)['supervisor.slots.ports']
 
 def getPidByPort(port):
-    for p in psutil.net_connections('tcp'):
-        if p.laddr and str(p.laddr.port) == str(port):
-            return p.pid
+    # for p in psutil.net_connections('tcp'):
+    #     if p.laddr and str(p.laddr.port) == str(port):
+    #         return p.pid
+    cmd = 'lsof -n -i :' + port
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    out, err = proc.communicate()
+    return str(out)[2:].split('\\n')[1].split()[1]
+
         
 def getMyIp():
     return requests.get('https://api.ipify.org/?format=json').json()['ip']
