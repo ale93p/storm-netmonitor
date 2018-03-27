@@ -34,6 +34,10 @@ def generatePortPayload(trace):
     for key in trace:
         port = ''
         pid = ''
+        sh = key[0]
+        sp = key[1]
+        dh = key[2]
+        dp = key[3]
         if sh == myIp or sh in localhost: port = sp
         elif dh == myIp or dh in localhost: port = dp
         pid = getPidByPort(port)
