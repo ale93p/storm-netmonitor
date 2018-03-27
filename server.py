@@ -98,7 +98,8 @@ def getWorkerDataOut(addr, ports):# , time):
         where connections.ID == probes.connection \
         and (src_addr = \'' + str(addr) + '\' and src_port in ' + str(ports) + ') \
         group by src_addr'
-        
+    
+    print(query)
         # and ts > ' + str(time) + '\
 
     cur = db.execute(query)
@@ -313,7 +314,7 @@ def topo_view():
 
     if storm.topologies:
         for topo in storm.topologies:
-            print(storm.lastUpdate, gotFromDb, storm.workers[topo], len(storm.workers[topo]))
+            # print(storm.lastUpdate, gotFromDb, storm.workers[topo], len(storm.workers[topo]))
             if (storm.lastUpdate > 0 or gotFromDb) and storm.workers[topo] and len(storm.workers[topo]) > 0:
                 net = getAggregate(getTopoNetwork(storm.getWorkersAddr(topo), storm.getWorkersPort(topo)))#, time.time() - storm.getLastUp(topo)))
                 topoSummary.append((topo, storm.topologies[topo], len(storm.workers[topo]), humansize(net[0], False), humansize(net[1])))
@@ -364,7 +365,6 @@ def getWorkersView(topoId, portMap):
             executors[(executor[1], executor[2])].append(str(component) + str(executor[0]))
 
     ret = [] 
-    print(executors)
     for element in executors:
         ip = storm.getIpByName(element[0])
         ports = [element[1]]
@@ -374,7 +374,6 @@ def getWorkersView(topoId, portMap):
 
         in_data = getWorkerDataIn(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
-        print(in_data, out_data)
 
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))] 
@@ -446,6 +445,7 @@ def networkInsert_v2():
     try:
         client = request.remote_addr
         ts = request.form["ts"]
+        print("length trace:",len(request.form))
         for key in request.form: 
             # ts = time.time()
             if key != "ts":
@@ -459,7 +459,7 @@ def networkInsert_v2():
                 pkts = v[0]
                 bts = v[1]
 
-                print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
+                # print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
                 netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
                 
     except:
