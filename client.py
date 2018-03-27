@@ -34,6 +34,8 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
 def generatePortPayload(trace):
     global myIp
     payload = {}
+    not_payload = {}
+    start = time.time()
     for key in trace:
         port = ''
         pid = ''
@@ -43,18 +45,21 @@ def generatePortPayload(trace):
         dp = key[3]
         if sh == myIp or sh in localhost: port = sp
         elif dh == myIp or dh in localhost: port = dp
-        pid = getPidByPort(port)
-        if pid:
-            if port not in portMapping or portMapping[port] != pid:
-            # sobstitute the old pid with the new one (temporary solution)  
-                portMapping[port] = pid
-                payload[port] = pid
+        if port not in payload and port not in not_payload:
+            pid = getPidByPort(port)
+            if pid:
+                if port not in portMapping or portMapping[port] != pid:
+                # sobstitute the old pid with the new one (temporary solution)  
+                    portMapping[port] = pid
+                    payload[port] = pid
+                else not_payload[port] = None
+    print("payload in", time.time() - start)
     return payload
 
 def portInsertFull(trace):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
     payload = generatePortPayload(trace)
-    return requests.post(url, data = payload)
+    if payload: return requests.post(url, data = payload)
 
 def portInsert(sh, sp, dh, dp):
     """ deprecate """
@@ -84,9 +89,9 @@ def initializePortMappingFull(ports):
             if pid:
                 portMapping[port] = pid
                 payload[port] = pid
-
-    port_init = True
-    return requests.post(url, data = payload)
+                port_init = True
+    
+    if port_init: return requests.post(url, data = payload)
 
 def initializePortMapping(ports):
     """ deprecate """
