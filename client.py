@@ -32,6 +32,7 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
 def generatePortPayload(trace):
+    global myIp
     payload = {}
     for key in trace:
         port = ''
@@ -51,7 +52,6 @@ def generatePortPayload(trace):
     return payload
 
 def portInsertFull(trace):
-    global myIp
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
     payload = generatePortPayload(trace)
     return requests.post(url, data = payload)
