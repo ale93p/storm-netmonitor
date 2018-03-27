@@ -34,7 +34,7 @@ def networkInsert(ts, sh, sp, dh, dp, pk, by):
 def generatePortPayload(trace):
     global myIp
     payload = {}
-    not_payload = {}
+    already_done = []
     start = time.time()
     port = ''
     pid = ''
@@ -49,14 +49,15 @@ def generatePortPayload(trace):
         elif dh in localhost + [myIp]:
             port = key[3]
         
-        if port and port not in payload + not_payload:
+        if port and port not in already_done:
             pid = getPidByPort(port)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
                     portMapping[port] = pid
                     payload[port] = pid
-                else: not_payload[port] = None
+                    
+                already_done.append(port)
     print("length",len(trace),"payload in", time.time() - start)
     return payload
 
