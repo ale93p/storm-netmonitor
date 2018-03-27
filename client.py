@@ -93,7 +93,7 @@ def initializePortMappingFull(ports):
     payload = {}
     for port in ports:
         if port not in portMapping:
-            pid = getPidByPort(port, 'rcv')
+            pid = getPidByPort(port, 'snd')
             if pid:
                 portMapping[port] = pid
                 payload[port] = pid
