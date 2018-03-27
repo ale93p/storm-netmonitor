@@ -53,7 +53,7 @@ def generatePortPayload(trace):
                     portMapping[port] = pid
                     payload[port] = pid
                 else: not_payload[port] = None
-    print("payload in", time.time() - start)
+    print("length",len(trace),"payload in", time.time() - start)
     return payload
 
 def portInsertFull(trace):
