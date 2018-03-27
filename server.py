@@ -420,8 +420,49 @@ def getConnection(sa,sp,da,dp):
     if len(r) < 1: return None
     else: return r
 
+
+def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
+    c = getConnection(src_host, src_port, dst_host, dst_port)
+    if c and client != c[0][1]: pass
+    else:
+        if not c:
+            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + client + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
+            connId = insert_db(query)
+        else: connId = c[0][0]
+        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
+        insert_db(query)
+
+    print ("[VERBOSE] Data write success") if args.verbose else None
+
+@app.route("/api/v0.2/network/insert", methods=['POST'])
+def networkInsert_v2():
+    try:
+        client = request.remote_addr
+        ts = request.form["ts"]
+        for key in request.form: 
+            # ts = time.time()
+            if key != "ts":
+                k = key[1:-1].split(',')
+                src_host = k[0]
+                src_port = k[1]
+                dst_host = k[2]
+                dst_port = k[3]
+                # print(src_host,src_port,dst_host,dst_port)
+                v = request.form[key].split(',')
+                pkts = v[0]
+                bts = v[1]
+                print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
+    except:
+        print ("[ERROR] Wrong API request")
+        abort(400)
+
+    netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
+
+    return "Ok"
+
 @app.route("/api/v0.1/network/insert", methods=['GET'])
-def networkInsert():
+def networkInsert_v1():
+    """ deprecated """
     try:
         client = request.remote_addr
         # ts = time.time()
@@ -437,17 +478,8 @@ def networkInsert():
         abort(400)
     print ("[VERBOSE] Received from ",client," at ",str(ts),": ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)", sep='') if args.verbose else None
     
-    c = getConnection(src_host, src_port, dst_host, dst_port)
-    if c and client != c[0][1]: pass
-    else:
-        if not c:
-            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + client + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
-            connId = insert_db(query)
-        else: connId = c[0][0]
-        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
-        insert_db(query)
+    netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
 
-    print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"
 
 def getPort(addr, port):
@@ -458,8 +490,33 @@ def getPort(addr, port):
     if len(r) < 1: return None
     else: return r
 
+def portInsert(client, port, pid):
+    p = getPort(client, port)
+    if not p:
+        query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
+        connId = insert_db(query)
+    elif p[0][0] != pid: #update the database with the new pid (should happen only if the worker crashes)
+        query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
+        insert_db(query)
+
+@app.route("/api/v0.2/port/insert", methods=['POST'])
+def portInsert_v2():
+    try:
+        client = request.remote_addr
+        # ts = time.time()
+        for key in request.form:
+            port = key
+            pid = request.form[key]
+            portInsert(client, port, pid)
+    except:
+        print ("[ERROR] Wrong API request")
+        abort(400)
+        
+    return "Ok"
+
 @app.route("/api/v0.1/port/insert", methods=['GET'])
-def portInsert():
+def portInsert_v1():
+    """ deprecated """
     try:
         client = request.remote_addr
         ts = time.time()
@@ -470,13 +527,7 @@ def portInsert():
         abort(400)
     print ("[VERBOSE] Received from ",client," at ",str(ts),": ", port," <-> ", pid, sep='') if args.verbose else None
     
-    p = getPort(client, port)
-    if not p:
-        query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
-        connId = insert_db(query)
-    elif p[0][0] != pid: #update the database with the new pid (should happen only if the worker crashes)
-        query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
-        insert_db(query)
+    portInsert(client, port, pid)
 
     print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"

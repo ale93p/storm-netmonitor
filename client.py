@@ -13,12 +13,45 @@ portMapping = {}
 port_init = False
 stormSlots = []
 
+
+def networkInsertFull(now, trace):
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
+    # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
+    payload = {}
+    for key in trace:
+        payload[key] = ",".join([trace[key].pkts, trace[key].pkts])
+    payload["ts"] = now
+    return requests.post(url, data = payload)
+
 def networkInsert(ts, sh, sp, dh, dp, pk, by):  
+    """ deprecate """
     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
+def generatePortPayload(trace):
+    payload = {}
+    for key in trace:
+        port = ''
+        pid = ''
+        if sh == myIp or sh in localhost: port = sp
+        elif dh == myIp or dh in localhost: port = dp
+        pid = getPidByPort(port)
+        if pid:
+            if port not in portMapping or portMapping[port] != pid:
+            # sobstitute the old pid with the new one (temporary solution)  
+                portMapping[port] = pid
+                payload[port] = pid
+    return payload
+
+def portInsertFull(trace):
+    global myIp
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
+    payload = generatePortPayload(trace)
+    return request.post(url, data = payload)
+
 def portInsert(sh, sp, dh, dp):
+    """ deprecate """
     global myIp
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     port = ''
@@ -27,7 +60,7 @@ def portInsert(sh, sp, dh, dp):
     elif dh == myIp or dh in localhost: port = dp
     
     pid = getPidByPort(port)
-    if pid != None:
+    if pid:
         if port not in portMapping or portMapping[port] != pid:
             # sobstitute the old pid with the new one (temporary solution)  
             portMapping[port] = pid
@@ -35,7 +68,22 @@ def portInsert(sh, sp, dh, dp):
         else:
             return 'OK'
 
+def initializePortMappingFull(ports):
+    global port_init
+    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
+    payload = {}
+    for port in ports:
+        if port not in portMapping:
+            pid = getPidByPort(port)
+            if pid:
+                portMapping[port] = pid
+                payload[port] = pid
+
+    port_init = True
+    return request.post(url, data = payload)
+
 def initializePortMapping(ports):
+    """ deprecate """
     global port_init
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
     for port in ports:
@@ -73,16 +121,17 @@ def sendData(trace):
     now = time.time()
     
     print('[DEBUG] newT:',now) if args.debug else None
-    for key in trace:
+    #for key in trace:
         #if key[3] in stormSlots:
-        res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-        
-        print('[DEBUG] send:',time.time()) if args.debug else None
-        print("[DEBUG] Network Insert:",res) if args.debug else None
+            # res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
+    res = networkInsertFull(now, trace);
+    print('[DEBUG] send:',time.time()) if args.debug else None
+    print("[DEBUG] Network Insert:",res) if args.debug else None
         #
-        if not port_init: initializePortMapping(stormSlots)
-        res = portInsert(key[0],key[1],key[2],key[3])
-        print("[DEBUG] Port Insert:",res) if args.debug else None
+    if not port_init: initializePortMapping(stormSlots)
+    #    res = portInsert(key[0],key[1],key[2],key[3])
+    res = portInsertFull(trace)
+    #    print("[DEBUG] Port Insert:",res) if args.debug else None
 
 if __name__ == "__main__":
     global storm_slots, myIp
