@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, abort, render_template, g 
+from flask import Flask, jsonify, request, abort, render_template, g, redirect, url_for 
 import argparse
 import time, datetime
 import sqlite3
@@ -304,6 +304,7 @@ def conn_view():
     return render_template('summary.html',connections=cons)
 
 @app.route('/topo_view')
+@app.route('/topo_view/')
 def topo_view():
     global storm, storm_offline
 
@@ -400,17 +401,20 @@ def topo_network():
     topo_name = "No ID Selected"
     if request.args['id']:
         topoId = request.args['id']
-        
+    
+    try:    
         reload_storm()
 
         portMap = getPortMap()
         workers = getWorkersView(topoId, portMap)
         connections = getTopologyConnections(topoId, portMap)
 
-    topo_name = storm.topologies[topoId] + " [" + topoId + "]" 
-        
-        
-    return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
+        topo_name = storm.topologies[topoId] + " [" + topoId + "]" 
+
+        return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
+
+    except:
+        return redirect(url_for('topo_view'))
 
 def getConnection(sa,sp,da,dp):
     db = get_db()
@@ -511,7 +515,7 @@ def portInsert_v2():
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-        
+
     return "Ok"
 
 @app.route("/api/v0.1/port/insert", methods=['GET'])

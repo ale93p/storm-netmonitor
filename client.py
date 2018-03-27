@@ -19,7 +19,7 @@ def networkInsertFull(now, trace):
     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
     payload = {}
     for key in trace:
-        payload[key] = ",".join([trace[key].pkts, trace[key].pkts])
+        payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
 
