@@ -51,6 +51,33 @@ def humansize(n, bytes=True):
 #        if newfile: csvwriter.writerow(title_row)
 #        csvwriter.writerow(d)
 
+def init_db():
+    db = get_db()
+    with app.open_resource(schema_dir, mode='r') as f:
+        db.cursor().executescript(f.read())
+    db.commit()
+
+def insert_db(query):
+    db = get_db()
+    cur = db.execute(query)
+    db.commit()
+    return cur.lastrowid
+
+def connect_db():
+    """Connects to the specific database."""
+    rv = sqlite3.connect(app.config['DATABASE'])
+    rv.row_factory = sqlite3.Row
+    return rv
+
+def get_db():
+    """Opens a new database connection if there is none yet for the
+    current application context.
+    """
+    if not hasattr(g, 'sqlite_db'):
+        g.sqlite_db = connect_db()
+    return g.sqlite_db
+
+
 def getSummary():
     db = get_db()
     query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes desc;'
@@ -117,25 +144,7 @@ def getAggregate(cur):
 
     return (totPkts, totData)
 
-def insert_db(query):
-    db = get_db()
-    cur = db.execute(query)
-    db.commit()
-    return cur.lastrowid
 
-def connect_db():
-    """Connects to the specific database."""
-    rv = sqlite3.connect(app.config['DATABASE'])
-    rv.row_factory = sqlite3.Row
-    return rv
-
-def get_db():
-    """Opens a new database connection if there is none yet for the
-    current application context.
-    """
-    if not hasattr(g, 'sqlite_db'):
-        g.sqlite_db = connect_db()
-    return g.sqlite_db
 
 def updateStormDb():
     db = get_db()
@@ -279,11 +288,7 @@ def close_db(error):
     if hasattr(g, 'sqlite_db'):
         g.sqlite_db.close()
 
-def init_db():
-    db = get_db()
-    with app.open_resource(schema_dir, mode='r') as f:
-        db.cursor().executescript(f.read())
-    db.commit()
+
 
 @app.before_first_request
 def init():
