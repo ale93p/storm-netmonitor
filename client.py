@@ -46,14 +46,12 @@ def generatePortPayload(trace):
         # dp = key[3]
         if sh in localhost + [myIp]:
             port = key[1]
-            pos = 'snd'
         elif dh in localhost + [myIp]:
             port = key[3]
-            pos = 'rcv'
         
         if port not in already_done:
             already_done.append(port)
-            pid = getPidByPort(port,pos)
+            pid = getPidByPort(port)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
@@ -93,7 +91,7 @@ def initializePortMappingFull(ports):
     payload = {}
     for port in ports:
         if port not in portMapping:
-            pid = getPidByPort(port, 'snd')
+            pid = getPidByPort(port)
             if pid:
                 portMapping[port] = pid
                 payload[port] = pid
@@ -126,13 +124,12 @@ def getStormSlots(conf):
     f = open(conf, 'r')
     return yaml.load(f)['supervisor.slots.ports']
 
-def getPidByPort(port, pos):
+def getPidByPort(port):
     # for p in psutil.net_connections('tcp'):
     #     if p.laddr and str(p.laddr.port) == str(port):
     #         return p.pid
     # cmd = 'lsof -n -i :' + str(port)
-    if pos == 'snd': cmd = "ss -ptn sport = :" + str(port)
-    elif pos == 'rcv': cmd = "ss -ptn dport = :" + str(port)
+    cmd = "ss -ptn sport = :" + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
     try:
