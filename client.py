@@ -191,15 +191,9 @@ if __name__ == "__main__":
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
-        if p.sp in stormSlots or p.dp in stormSlots:
+        if p.sp in stormSlots + [zkPort] or p.dp in stormSlots + [zkPort]: #ZooKeeper:
         # Filter out ACK direction
         #if p.dp in stormSlots:    
-            if (p.sh, p.sp, p.dh, p.dp) not in trace:
-                trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
-                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
-            else:
-                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
-        elif p.sp == zkPort or p.dp == zkPort: #ZooKeeper
             if (p.sh, p.sp, p.dh, p.dp) not in trace:
                 trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
