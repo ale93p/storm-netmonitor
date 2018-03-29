@@ -52,10 +52,12 @@ def humansize(n, bytes=True):
 #        csvwriter.writerow(d)
 
 def init_db():
+    print("Initilizing db... ", end="")
     db = get_db()
     with app.open_resource(schema_dir, mode='r') as f:
         db.cursor().executescript(f.read())
     db.commit()
+    print("OK")
 
 def insert_db(query):
     db = get_db()
