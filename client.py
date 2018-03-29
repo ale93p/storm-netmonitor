@@ -14,7 +14,7 @@ portMapping = {}
 port_init = False
 
 stormSlots = []
-zkPort = '2181'
+zkPort = 2181
 
 def networkInsertFull(now, trace):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
@@ -25,12 +25,6 @@ def networkInsertFull(now, trace):
             payload[key] = ",".join([str(trace[key].pkts), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
-
-# def networkInsert(ts, sh, sp, dh, dp, pk, by):  
-#     """ deprecate """
-#     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
-#     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
 
 def generatePortPayload(trace):
     global myIp
@@ -59,31 +53,13 @@ def generatePortPayload(trace):
                     payload[port] = pid
 
             
-    print("length",len(trace),"payload in", time.time() - start)
+    # print("length",len(trace),"payload in", time.time() - start)
     return payload
 
 def portInsertFull(trace):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
     payload = generatePortPayload(trace)
     if payload: return requests.post(url, data = payload)
-
-# def portInsert(sh, sp, dh, dp):
-#     """ deprecate """
-#     global myIp
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-#     port = ''
-#     pid = ''
-#     if sh == myIp or sh in localhost: port = sp
-#     elif dh == myIp or dh in localhost: port = dp
-    
-#     pid = getPidByPort(port)
-#     if pid:
-#         if port not in portMapping or portMapping[port] != pid:
-#             # sobstitute the old pid with the new one (temporary solution)  
-#             portMapping[port] = pid
-#             return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-#         else:
-#             return 'OK'
 
 def initializePortMappingFull(ports):
     global port_init
@@ -98,18 +74,6 @@ def initializePortMappingFull(ports):
                 port_init = True
     
     if port_init: return requests.post(url, data = payload)
-
-# def initializePortMapping(ports):
-#     """ deprecate """
-#     global port_init
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-#     for port in ports:
-#         if port not in portMapping:
-#             pid = getPidByPort(port,'rcv')
-#             if pid:
-#                 portMapping[port] = pid
-#                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-#                 port_init = True
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -214,3 +178,41 @@ if __name__ == "__main__":
                 thread.start_new_thread(sendData, (trace,))    
                 
                 trace = {} 
+
+### OLD FUNCIONS
+
+# def networkInsert(ts, sh, sp, dh, dp, pk, by):  
+#     """ deprecate """
+#     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
+#     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
+
+# def portInsert(sh, sp, dh, dp):
+#     """ deprecate """
+#     global myIp
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
+#     port = ''
+#     pid = ''
+#     if sh == myIp or sh in localhost: port = sp
+#     elif dh == myIp or dh in localhost: port = dp
+    
+#     pid = getPidByPort(port)
+#     if pid:
+#         if port not in portMapping or portMapping[port] != pid:
+#             # sobstitute the old pid with the new one (temporary solution)  
+#             portMapping[port] = pid
+#             return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+#         else:
+#             return 'OK'
+
+# def initializePortMapping(ports):
+#     """ deprecate """
+#     global port_init
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
+#     for port in ports:
+#         if port not in portMapping:
+#             pid = getPidByPort(port,'rcv')
+#             if pid:
+#                 portMapping[port] = pid
+#                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
+#                 port_init = True
