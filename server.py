@@ -448,11 +448,11 @@ def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
 
 
 @app.route("/api/v0.2/network/insert", methods=['POST'])
-def networkInsert_v2():
+def networkInsert_api_v2():
     try:
         client = request.remote_addr
         ts = request.form["ts"]
-        print("length trace:",len(request.form))
+        print("[DEBUG] received length trace:",len(request.form)) if args.verbose else None
         for key in request.form: 
             # ts = time.time()
             if key != "ts":
@@ -477,7 +477,7 @@ def networkInsert_v2():
 
 
 @app.route("/api/v0.1/network/insert", methods=['GET'])
-def networkInsert_v1():
+def networkInsert_api_v1():
     """ deprecated """
     try:
         client = request.remote_addr
@@ -516,14 +516,14 @@ def portInsert(client, port, pid):
         insert_db(query)
 
 @app.route("/api/v0.2/port/insert", methods=['POST'])
-def portInsert_v2():
+def portInsert_api_v2():
     try:
         client = request.remote_addr
         # ts = time.time()
         for key in request.form:
             port = key
             pid = request.form[key]
-            print(client,port,pid)
+            # print(client,port,pid)
             portInsert(client, port, pid)
     except:
         print ("[ERROR] Wrong API request")
@@ -531,7 +531,7 @@ def portInsert_v2():
     return "Ok"
 
 @app.route("/api/v0.1/port/insert", methods=['GET'])
-def portInsert_v1():
+def portInsert_api_v1():
     """ deprecated """
     try:
         client = request.remote_addr
