@@ -14,14 +14,14 @@ portMapping = {}
 port_init = False
 
 stormSlots = []
-zkPort = 2181
+zkPort = None
 
 def networkInsertFull(now, trace):
     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
     payload = {}
     for key in trace:
-        if key[3] in stormSlots + [zkPort] or key[1] == zkPort: #check why it doesn't work
+        if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
             payload[key] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
     payload["ts"] = now
     return requests.post(url, data = payload)
@@ -131,6 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
     parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.1.1/conf/storm.yaml')
+    parser.add_argument("--zookeeper", dest="zookeeper", help="analyse also zookeeper connections")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -139,6 +140,7 @@ if __name__ == "__main__":
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
     serverPort = args.server_port if args.server_port else '5000'
+    if args.zookeeper: zkPort = int(args.zookeeper)
     
     myIp = getMyIp()
 
