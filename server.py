@@ -463,8 +463,9 @@ def networkInsert_api_v2():
                 dst_port = ''.join(k[3].split('\'')).strip()
                 # print(src_host,src_port,dst_host,dst_port)
                 v = request.form[key].split(',')
-                pkts = v[0]
-                bts = v[1]
+                bts = v[0]
+                pkts = v[1]
+                # print(request.form[key],v,pkts,bts)
 
                 # print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
                 netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
