@@ -82,18 +82,28 @@ def get_db():
 
 def getSummary():
     db = get_db()
-    query = 'select src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts from connections, probes where connections.ID == probes.connection group by probes.connection order by bytes desc;'
+    query = 'SELECT src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) as ts \
+            FROM connections, probes \
+            WHERE connections.ID == probes.connection \
+            GROUP BY probes.connection \
+            ORDER BY bytes DESC;'
     cur = db.execute(query)
     return cur.fetchall()
 
 def getTopoNetwork(addrs, ports):#, time):
     db = get_db()
-    query = 'select client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) \
-        from connections, probes \
-        where connections.ID == probes.connection and \
-        ((src_addr in ' + str(addrs) + ' and src_port in ' + str(ports) + ') or (dst_addr in ' + str(addrs) + ' and dst_port in ' + str(ports) + ')) \
-        group by probes.connection \
-        order by bytes desc'
+    query = 'SELECT client, src_addr, src_port, dst_addr, dst_port, SUM(pkts) as pkts, SUM(bytes) as bytes, MAX(ts) \
+            FROM connections, probes \
+            WHERE \
+            connections.ID == probes.connection \
+            AND \
+            (\
+                (src_addr IN ' + str(addrs) + ' AND src_port IN ' + str(ports) + ') \
+                OR \
+                (dst_addr IN ' + str(addrs) + ' AND dst_port IN ' + str(ports) + ')\
+            ) \
+            GROUP BY probes.connection \
+            ORDER BY bytes DESC'
 
         #and ts > ' + str(time) + '\
     cur = db.execute(query)
@@ -104,11 +114,17 @@ def getWorkerDataIn(addr, ports):#, time):
     if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
 
     db = get_db()
-    query = 'select SUM(bytes) as bytes \
-        from connections, probes \
-        where connections.ID == probes.connection \
-        and (dst_addr = \'' + str(addr) + '\' and dst_port in ' + str(ports) + ') \
-        group by dst_addr'
+    query = 'SELECT SUM(bytes) AS bytes \
+            FROM connections, probes \
+            WHERE \
+            connections.ID == probes.connection \
+            AND \
+            (\
+                (dst_addr = \'' + str(addr) + '\' \
+                OR \
+                (dst_addr like \'127%\' AND client = \'' + str(addr) + '\')\
+            ) \
+            AND dst_port in ' + str(ports) + ')'
         
         # and ts > ' + str(time) + '\
         
@@ -122,13 +138,20 @@ def getWorkerDataOut(addr, ports):# , time):
     if len(ports) == 1: ports = "('" + str(ports[0]) + "')"
 
     db = get_db()
-    query = 'select SUM(bytes) as bytes \
-        from connections, probes \
-        where connections.ID == probes.connection \
-        and (src_addr = \'' + str(addr) + '\' and src_port in ' + str(ports) + ') \
-        group by src_addr'
+    query = 'SELECT SUM(bytes) as bytes \
+            FROM connections, probes \
+            WHERE \
+            connections.ID == probes.connection \
+            AND \
+            (\
+                (src_addr = \'' + str(addr) + '\' \
+                OR \
+                (src_addr like \'127%\' AND client = \'' + str(addr) + '\')\
+            ) \
+            AND \
+            src_port in ' + str(ports) + ')'
     
-    # print(query)
+    print(query)
         # and ts > ' + str(time) + '\
 
     cur = db.execute(query)
@@ -215,9 +238,11 @@ def updateStormDb():
         for component in storm.executors[topo]:
             for e in storm.executors[topo][component]:
                 if component not in executorsInDb:
+                    ## insert
                     query = 'INSERT INTO executor (executor, host, port, component) ' + \
                             'VALUES (\'' + e[0] + '\',\'' + e[1] + '\',\'' + str(e[2]) + '\',\'' + component + '\')'
-                elif executorsInDb[component][1] != e[1] and executorsInDb[component][2] != e[2]:
+                elif e[1] and (executorsInDb[component][1] != e[1] or executorsInDb[component][2] != e[2]):
+                    ## update if something changed
                     query = 'UPDATE executor ' + \
                             'SET host = \'' + e[1] + '\' AND port = \'' + str(e[2]) + '\' ' + \
                             'WHERE executor = \'' + e[0] + '\' AND component = \'' + component + '\'' 
@@ -225,7 +250,6 @@ def updateStormDb():
                 db.commit()
 
 def checkStormDb():
-    global gotFromDb
     print('Retreiving data from local DB... ', end='')
     ### follow storm.reload() scheme
     db = get_db()
@@ -269,7 +293,7 @@ def checkStormDb():
     return True
 
 def reload_storm():
-    global storm, storm_offline, gotFromDb
+    global storm, gotFromDb
     now = time.time()
     res = True
     if now - storm.lastUpdate > 600: 
@@ -280,7 +304,6 @@ def reload_storm():
             gotFromDb = False
             
     if len(storm.topologies) < 1 or not res:
-        ### use storm_offline, if not present: 
         ### check in the database
         gotFromDb = checkStormDb()
 
@@ -313,7 +336,7 @@ def conn_view():
 @app.route('/topo_view')
 @app.route('/topo_view/')
 def topo_view():
-    global storm, storm_offline
+    global storm
 
     reload_storm()
 
@@ -379,6 +402,7 @@ def getWorkersView(topoId, portMap):
             pid = portMap[(ip, str(element[1]))]
             ports = [k[1] for k,v in portMap.items() if v==str(pid)]
 
+        print(pid, ports)
         in_data = getWorkerDataIn(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
 
@@ -403,7 +427,7 @@ def getPortMap():
 
 @app.route('/topo_view/network', methods=['GET'])
 def topo_network():
-    global storm, storm_offline
+    global storm 
     connections = workers = "Error"
     topo_name = "No ID Selected"
 
@@ -450,6 +474,7 @@ def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
 @app.route("/api/v0.2/network/insert", methods=['POST'])
 def networkInsert_api_v2():
     try:
+        reload_storm()
         client = request.remote_addr
         ts = request.form["ts"]
         print("[DEBUG] received length trace:",len(request.form)) if args.verbose else None
@@ -519,6 +544,7 @@ def portInsert(client, port, pid):
 @app.route("/api/v0.2/port/insert", methods=['POST'])
 def portInsert_api_v2():
     try:
+        reload_storm()
         client = request.remote_addr
         # ts = time.time()
         for key in request.form:
