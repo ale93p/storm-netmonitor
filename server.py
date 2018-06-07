@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from flask import Flask, jsonify, request, abort, render_template, g, redirect, url_for 
 import argparse
 import time, datetime
