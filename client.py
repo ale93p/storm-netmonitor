@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
-    parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.1.1/conf/storm.yaml')
+    parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.2.1/conf/storm.yaml')
     parser.add_argument("--zookeeper", dest="zookeeper", help="analyse also zookeeper connections")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
     args = parser.parse_args()
