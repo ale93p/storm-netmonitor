@@ -12,7 +12,7 @@ start_time = time.time()
 #filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
-nimbus_address = 'sdn1.i3s.unice.fr'
+nimbus_address = None
 localhost = ['127.0.0.1','127.0.1.1'] 
 
 storm = StormCollector(nimbus_address)
@@ -583,8 +583,14 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
     parser.add_argument("--initdb", dest="initdb", help="initialize the database", action="store_true", default=False)
     # parser.add_argument("-w", dest="csv", help="specify a csv file to store results", type=str) # TODO: write to csv file if selected
+    parser.add_argument("--nimbus", dest="nimbus_address", help="storm nimbus address", type=str, default=None)    
     args = parser.parse_args()
 
+    if(args.nimbus_address):
+        nimbus_address = args.nimbus_address
+    else:
+        print("You must define nimbus address [--nimbus]")
+        
     print(" * Enabled verbose output * ") if args.verbose else None
 
     app.run(host='0.0.0.0', port=args.port, threaded=True)
