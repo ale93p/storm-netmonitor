@@ -10,6 +10,7 @@ import subprocess
 import _thread as thread
 from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
+import socket
 
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
@@ -40,14 +41,15 @@ def generatePortPayload(trace):
         # sp = key[1]
         dh = key[2] 
         # dp = key[3]
-        if sh in localhost + [myIp]:
+        if sh in localhost + myIp:
             port = key[1]
-        elif dh in localhost + [myIp]:
+        elif dh in localhost + myIp:
             port = key[3]
         
         if port not in already_done:
             already_done.append(port)
             pid = getPidByPort(port)
+            print(port,pid)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
@@ -106,8 +108,9 @@ def getPidByPort(port):
      
         
 def getMyIp():
-    return requests.get('https://api.ipify.org/?format=json').json()['ip']
-
+    method_1 = requests.get('https://api.ipify.org/?format=json').json()['ip']
+    method_2 = socket.gethostbyname(socket.gethostname())
+    return [method_1, method_2]
 def sendData(trace):
     global myIp
     global port_init, stormSlots
@@ -145,7 +148,7 @@ if __name__ == "__main__":
     if args.zookeeper: zkPort = int(args.zookeeper)
     
     myIp = getMyIp()
-
+    
     trace = {}
     start_interval = None
     init_interval = True

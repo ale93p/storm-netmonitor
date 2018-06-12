@@ -6,7 +6,7 @@ from subprocess import DEVNULL, STDOUT, check_call
 import time
 
 class StormCollector():
-    def __init__(self, api_addr, api_port = 8080):
+    def __init__(self, api_addr = None, api_port = 8080):
         self.address = api_addr
         self.port = api_port
         

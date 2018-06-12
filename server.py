@@ -6,16 +6,16 @@ import time, datetime
 import sqlite3
 #import csv
 from os.path import join #, isfile
+import sys
 from modules.stormapi import StormCollector
 
 start_time = time.time()
 #filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
 schema_dir = 'database/schema.sql'
-nimbus_address = None
 localhost = ['127.0.0.1','127.0.1.1'] 
 
-storm = StormCollector(nimbus_address)
+storm = StormCollector(None)
 gotFromDb = False
 
 app = Flask(__name__)
@@ -44,14 +44,8 @@ def humansize(n, bytes=True):
 
     return '%s %s' % (f, suffixes[i])
 
-#def writeToCsv(d): 
-#    title_row = ['client', 'timestamp', 'snd_addr', 'snd_port', 'rcv_addr', 'rcv_port', 'pkts', 'bytes']
-#    if len(d) != len(title_row): raise Exception('Data lenght not matching')
-#    newfile = not isfile(filename)
-#    with open(filename, 'a', newline='') as csvfile:
-#        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-#        if newfile: csvwriter.writerow(title_row)
-#        csvwriter.writerow(d)
+
+### SQLite DBMS functions
 
 def init_db():
     print("Initilizing db... ", end="")
@@ -81,6 +75,7 @@ def get_db():
         g.sqlite_db = connect_db()
     return g.sqlite_db
 
+### SQLite Queries
 
 def getSummary():
     db = get_db()
@@ -404,9 +399,12 @@ def getWorkersView(topoId, portMap):
             pid = portMap[(ip, str(element[1]))]
             ports = [k[1] for k,v in portMap.items() if v==str(pid)]
 
-        print(pid, ports)
+        # print(pid, ports)
         in_data = getWorkerDataIn(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
         out_data = getWorkerDataOut(ip, tuple(ports))#, time.time() - storm.getLastUp(topoId))
+
+        if(not in_data): in_data = -1
+        if (not out_data): out_data = -1
 
         if (ip, str(element[1])) in portMap:
             pid = portMap[(ip, str(element[1]))] 
@@ -448,7 +446,10 @@ def topo_network():
         return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
 
     except:
-        return redirect(url_for('topo_view'))
+        e = sys.exc_info()[0]
+        print("DEBUG: {}".format(e))
+        raise
+        # return redirect(url_for('topo_view'))
 
 def getConnection(sa,sp,da,dp):
     db = get_db()
@@ -503,29 +504,6 @@ def networkInsert_api_v2():
         
     return "Ok"
 
-
-@app.route("/api/v0.1/network/insert", methods=['GET'])
-def networkInsert_api_v1():
-    """ deprecated """
-    try:
-        client = request.remote_addr
-        # ts = time.time()
-        ts = request.args["ts"]
-        src_host = request.args["src_host"]
-        src_port = request.args["src_port"]
-        dst_host = request.args["dst_host"]
-        dst_port = request.args["dst_port"]
-        pkts = request.args["pkts"]
-        bts = request.args["bytes"]
-    except:
-        print ("[ERROR] Wrong API request")
-        abort(400)
-    print ("[VERBOSE] Received from ",client," at ",str(ts),": ",src_host,":",src_port,"->",dst_host,":",dst_port," ",pkts,"pkts ",bts,"Bytes)", sep='') if args.verbose else None
-    
-    netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
-
-    return "Ok"
-
 def getPort(addr, port):
     db = get_db()
     query = 'select pid from port_mapping where addr == \'' + addr + '\' and port == \'' + port + '\''
@@ -553,28 +531,11 @@ def portInsert_api_v2():
             port = key
             pid = request.form[key]
             # print(client,port,pid)
+            
             portInsert(client, port, pid)
     except:
         print ("[ERROR] Wrong API request")
         abort(400)
-    return "Ok"
-
-@app.route("/api/v0.1/port/insert", methods=['GET'])
-def portInsert_api_v1():
-    """ deprecated """
-    try:
-        client = request.remote_addr
-        ts = time.time()
-        port = request.args["port"]
-        pid = request.args["pid"]
-    except:
-        print ("[ERROR] Wrong API request")
-        abort(400)
-    print ("[VERBOSE] Received from ",client," at ",str(ts),": ", port," <-> ", pid, sep='') if args.verbose else None
-    
-    portInsert(client, port, pid)
-
-    print ("[VERBOSE] Data write success") if args.verbose else None
     return "Ok"
 
 if __name__ == "__main__":
@@ -587,7 +548,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if(args.nimbus_address):
-        nimbus_address = args.nimbus_address
+        storm = StormCollector(args.nimbus_address)
     else:
         print("You must define nimbus address [--nimbus]")
         
