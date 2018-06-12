@@ -4,10 +4,13 @@ from flask import Flask, jsonify, request, abort, render_template, g, redirect, 
 import argparse
 import time, datetime
 import sqlite3
-#import csv
 from os.path import join #, isfile
 import sys
 from modules.stormapi import StormCollector
+import threading
+
+
+lock = threading.RLock()
 
 start_time = time.time()
 #filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
@@ -56,9 +59,11 @@ def init_db():
     print("OK")
 
 def insert_db(query):
+    lock.acquire()
     db = get_db()
     cur = db.execute(query)
     db.commit()
+    lock.release()
     return cur.lastrowid
 
 def connect_db():
