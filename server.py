@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 
-from flask import Flask, jsonify, request, abort, render_template, g, redirect, url_for 
+# from flask import Flask, jsonify, request, abort, render_template, g, redirect, url_for 
 import argparse
 import time, datetime
 import sqlite3
-from os.path import join #, isfile
+from os.path import join, dirname, abspath #, isfile
 import sys
 from modules.stormapi import StormCollector
 import threading
+import _thread as thread
+
+from kafka import KafkaConsumer
+import json
+import socket
+
+
+encodingMethod = 'ascii'
+networkTopicName = 'netmonitor_network'
+portTopicName = 'netmonitor_port'
 
 
 lock = threading.RLock()
@@ -21,15 +31,22 @@ localhost = ['127.0.0.1','127.0.1.1']
 storm = StormCollector(None)
 gotFromDb = False
 
-app = Flask(__name__)
-app.config.from_object(__name__)
-app.config.update(dict(
-    DATABASE=join(app.root_path, db_dir),
+# app = Flask(__name__)
+# app.config.from_object(__name__)
+# app.config.update(dict(
+#     DATABASE=join(app.root_path, db_dir),
+#     SECRET_KEY='development key',
+#     USERNAME='admin',
+#     PASSWORD='default'
+# ))
+# app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+
+db_config = dict(
+    DATABASE=join(dirname(abspath(__file__)), db_dir),
     SECRET_KEY='development key',
     USERNAME='admin',
     PASSWORD='default'
-))
-app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+)
 
 def humansize(n, bytes=True):
     if bytes:
@@ -53,7 +70,7 @@ def humansize(n, bytes=True):
 def init_db():
     print("Initilizing db... ", end="")
     db = get_db()
-    with app.open_resource(schema_dir, mode='r') as f:
+    with open(schema_dir, mode='r') as f:
         db.cursor().executescript(f.read())
     db.commit()
     print("OK")
@@ -68,7 +85,8 @@ def insert_db(query):
 
 def connect_db():
     """Connects to the specific database."""
-    rv = sqlite3.connect(app.config['DATABASE'])
+    # rv = sqlite3.connect(app.config['DATABASE'])
+    rv = sqlite3.connect(db_config['DATABASE'])
     rv.row_factory = sqlite3.Row
     return rv
 
@@ -76,9 +94,11 @@ def get_db():
     """Opens a new database connection if there is none yet for the
     current application context.
     """
-    if not hasattr(g, 'sqlite_db'):
-        g.sqlite_db = connect_db()
-    return g.sqlite_db
+    # if not hasattr(g, 'sqlite_db'):
+    #     g.sqlite_db = connect_db()
+    # return g.sqlite_db
+
+    return connect_db()
 
 ### SQLite Queries
 
@@ -309,34 +329,35 @@ def reload_storm():
         ### check in the database
         gotFromDb = checkStormDb()
 
-@app.teardown_appcontext
-def close_db(error):
-    """Closes the database again at the end of the request."""
-    if hasattr(g, 'sqlite_db'):
-        g.sqlite_db.close()
+# @app.teardown_appcontext
+# def close_db(error):
+#     """Closes the database again at the end of the request."""
+#     if hasattr(g, 'sqlite_db'):
+#         g.sqlite_db.close()
 
 
 
-@app.before_first_request
-def init():
-    init_db() if args.initdb else None
+# @app.before_first_request
+# def init():
+#     init_db() if args.initdb else None
     
-@app.route("/")
-@app.route("/index")
-@app.route("/conn_view")
-def conn_view():
-    connections = getSummary()
-    cons = []
-    now = time.time()
-    for c in connections:
-        ts = float(c[6])
-        if  now - ts < 60*60:
-            connString = c[0]+':'+c[1]+' -> '+c[2]+':'+c[3]
-            cons.append((connString, humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
-    return render_template('summary.html',connections=cons)
+# @app.route("/")
+# @app.route("/index")
+# @app.route("/conn_view")
+# def conn_view():
+#     connections = getSummary()
+#     cons = []
+#     now = time.time()
+#     for c in connections:
+#         ts = float(c[6])
+#         if  now - ts < 60*60:
+#             connString = c[0]+':'+c[1]+' -> '+c[2]+':'+c[3]
+#             cons.append((connString, humansize(int(c[4]), False), humansize(int(c[5])), datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S")))
+#     return render_template('summary.html',connections=cons)
 
-@app.route('/topo_view')
-@app.route('/topo_view/')
+# @app.route('/topo_view')
+# @app.route('/topo_view/')
+
 def topo_view():
     global storm
 
@@ -430,31 +451,31 @@ def getPortMap():
 
     return portmap
 
-@app.route('/topo_view/network', methods=['GET'])
-def topo_network():
-    global storm 
-    connections = workers = "Error"
-    topo_name = "No ID Selected"
+# @app.route('/topo_view/network', methods=['GET'])
+# def topo_network():
+#     global storm 
+#     connections = workers = "Error"
+#     topo_name = "No ID Selected"
 
-    if request.args['id']:
-        topoId = request.args['id']
+#     if request.args['id']:
+#         topoId = request.args['id']
     
-    try:    
-        reload_storm()
+#     try:    
+#         reload_storm()
 
-        portMap = getPortMap()
-        workers = getWorkersView(topoId, portMap)
-        connections = getTopologyConnections(topoId, portMap)
+#         portMap = getPortMap()
+#         workers = getWorkersView(topoId, portMap)
+#         connections = getTopologyConnections(topoId, portMap)
 
-        topo_name = storm.topologies[topoId] + " [" + topoId + "]" 
+#         topo_name = storm.topologies[topoId] + " [" + topoId + "]" 
 
-        return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
+#         return render_template('topo_network.html', connections=connections, workers=workers, topo_name=topo_name)
 
-    except:
-        e = sys.exc_info()[0]
-        print("DEBUG: {}".format(e))
-        raise
-        # return redirect(url_for('topo_view'))
+#     except:
+#         e = sys.exc_info()[0]
+#         print("DEBUG: {}".format(e))
+#         raise
+#         # return redirect(url_for('topo_view'))
 
 def getConnection(sa,sp,da,dp):
     db = get_db()
@@ -465,7 +486,7 @@ def getConnection(sa,sp,da,dp):
     else: return r
 
 
-def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
+def dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
     c = getConnection(src_host, src_port, dst_host, dst_port)
     if c and client != c[0][1]: pass
     else:
@@ -479,35 +500,62 @@ def netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
     print ("[VERBOSE] Data write success") if args.verbose else None
 
 
-@app.route("/api/v0.2/network/insert", methods=['POST'])
-def networkInsert_api_v2():
+# @app.route("/api/v0.2/network/insert", methods=['POST'])
+# def networkInsert_api_v2():
+#     try:
+#         reload_storm()
+#         client = request.remote_addr
+#         ts = request.form["ts"]
+#         print("[DEBUG] received length trace:",len(request.form)) if args.verbose else None
+#         for key in request.form: 
+#             # ts = time.time()
+#             if key != "ts":
+#                 k = key[1:-1].split(',')
+#                 src_host = ''.join(k[0].split('\'')).strip()
+#                 src_port = ''.join(k[1].split('\'')).strip()
+#                 dst_host = ''.join(k[2].split('\'')).strip()
+#                 dst_port = ''.join(k[3].split('\'')).strip()
+#                 # print(src_host,src_port,dst_host,dst_port)
+#                 v = request.form[key].split(',')
+#                 bts = v[0]
+#                 pkts = v[1]
+#                 # print(request.form[key],v,pkts,bts)
+
+#                 # print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
+#                 netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
+                
+#     except:
+#         print ("[ERROR] : networkInsert_v2 : Wrong API request")
+#         abort(400)
+        
+#     return "Ok"
+
+def networkInsert(payload):
     try:
         reload_storm()
-        client = request.remote_addr
-        ts = request.form["ts"]
+        client = payload["client"]
+        ts = payload["ts"]
         print("[DEBUG] received length trace:",len(request.form)) if args.verbose else None
-        for key in request.form: 
+        for key in payload: 
             # ts = time.time()
-            if key != "ts":
+            if key != "ts" and key != "client":
                 k = key[1:-1].split(',')
                 src_host = ''.join(k[0].split('\'')).strip()
                 src_port = ''.join(k[1].split('\'')).strip()
                 dst_host = ''.join(k[2].split('\'')).strip()
                 dst_port = ''.join(k[3].split('\'')).strip()
                 # print(src_host,src_port,dst_host,dst_port)
-                v = request.form[key].split(',')
+                v = payload[key].split(',')
                 bts = v[0]
                 pkts = v[1]
                 # print(request.form[key],v,pkts,bts)
 
                 # print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
-                netInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
+                dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
                 
     except:
-        print ("[ERROR] : networkInsert_v2 : Wrong API request")
-        abort(400)
-        
-    return "Ok"
+        print ("[ERROR] : Wrong payload received in network insert")
+
 
 def getPort(addr, port):
     db = get_db()
@@ -517,7 +565,7 @@ def getPort(addr, port):
     if len(r) < 1: return None
     else: return r
 
-def portInsert(client, port, pid):
+def dbPortInsert(client, port, pid):
     p = getPort(client, port)
     if not p:
         query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
@@ -526,37 +574,94 @@ def portInsert(client, port, pid):
         query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
         insert_db(query)
 
-@app.route("/api/v0.2/port/insert", methods=['POST'])
-def portInsert_api_v2():
+# @app.route("/api/v0.2/port/insert", methods=['POST'])
+# def portInsert_api_v2():
+#     try:
+#         reload_storm()
+#         client = request.remote_addr
+#         # ts = time.time()
+#         for key in request.form:
+#             port = key
+#             pid = request.form[key]
+#             # print(client,port,pid)
+            
+#             portInsert(client, port, pid)
+#     except:
+#         print ("[ERROR] Wrong API request")
+#         abort(400)
+#     return "Ok"
+
+def portInsert(payload):
     try:
         reload_storm()
-        client = request.remote_addr
+        print("here")
+        client = payload["client"]
+        print("client:   ", client)
         # ts = time.time()
-        for key in request.form:
-            port = key
-            pid = request.form[key]
-            # print(client,port,pid)
+        for key in payload:
+            print("new key:    ", key)
+            if key != "client":
+                port = key
+                pid = payload[key]
+                print(client,port,pid)
             
-            portInsert(client, port, pid)
-    except:
-        print ("[ERROR] Wrong API request")
-        abort(400)
-    return "Ok"
+                dbPortInsert(client, port, pid)
+    except Exception as e:
+        print ("[ERROR] Wrong payload in port insert")
+        print(e)
+
+
+def networkKafkaConsumer(kafkaServerAddress):
+    try:
+        consumer = KafkaConsumer(networkTopicName, bootstrap_servers=kafkaServerAddress)
+    except Exception as e:
+        print("Error: ",e)
+
+    for msg in consumer:
+        m = msg.value
+        s = m.decode(encodingMethod)
+        d = json.loads(s)
+        print("network received:   ",d)
+        networkInsert(d)
+
+
+def portKafkaConsumer(kafkaServerAddress):
+    consumer = KafkaConsumer(portTopicName, bootstrap_servers=kafkaServerAddress)
+    for msg in consumer:
+        m = msg.value
+        s = m.decode(encodingMethod)
+        d = json.loads(s)
+        print("port received:   ",d)
+        portInsert(d)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")
     parser.add_argument("-p", "--port", dest="port", type=int, help="specify listening port", default=5000)
+    parser.add_argument("-k", "--kafka", dest="kafka_address", help="specify kafka server address")
     parser.add_argument("-v", "--verbose", dest="verbose", help="verbose mode", action="store_true", default=False)
     parser.add_argument("--initdb", dest="initdb", help="initialize the database", action="store_true", default=False)
     # parser.add_argument("-w", dest="csv", help="specify a csv file to store results", type=str) # TODO: write to csv file if selected
     parser.add_argument("--nimbus", dest="nimbus_address", help="storm nimbus address", type=str, default=None)    
     args = parser.parse_args()
 
+    init_db() if args.initdb else None
+
+    if args.kafka_address: kafkaServerAddress = args.kafka_address
+    else: kafkaServerAddress = socket.gethostname()
+
     if(args.nimbus_address):
         storm = StormCollector(args.nimbus_address)
     else:
         print("You must define nimbus address [--nimbus]")
+        quit()
         
     print(" * Enabled verbose output * ") if args.verbose else None
 
-    app.run(host='0.0.0.0', port=args.port, threaded=True)
+    thread.start_new_thread(networkKafkaConsumer, (kafkaServerAddress,))
+    thread.start_new_thread(portKafkaConsumer, (kafkaServerAddress,))
+
+    print("Ctrl+C to kill the application")
+    while(True):
+        time.sleep(10)
+
+    # app.run(host='0.0.0.0', port=args.port, threaded=True)

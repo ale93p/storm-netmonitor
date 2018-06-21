@@ -12,6 +12,14 @@ from pathlib import Path
 from modules.tcpprobe import ProbeParser, ProbeAggregator
 import socket
 
+from kafka import KafkaProducer
+from kafka.errors import KafkaError
+
+producer = None
+encodingMethod = 'ascii'
+networkTopicName = 'netmonitor_network'
+portTopicName = 'netmonitor_port'
+
 localhost = ['127.0.0.1', '127.0.1.1'] 
 portMapping = {}
 port_init = False
@@ -19,15 +27,30 @@ port_init = False
 stormSlots = []
 zkPort = None
 
-def networkInsertFull(now, trace):
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
-    # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
+# def networkInsertFull(now, trace):
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
+#     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
+#     payload = {}
+#     for key in trace:
+#         if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
+#             payload[key] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
+#     payload["ts"] = now
+#     return requests.post(url, data = payload)
+
+def networkInsertKafka(now, trace):
     payload = {}
     for key in trace:
         if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
             payload[key] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
     payload["ts"] = now
-    return requests.post(url, data = payload)
+    payload["client"] = socket.gethostname()
+
+    newPayload = {}
+    for key in payload:
+        newPayload[str(key)] = payload[key]
+
+    p = json.dumps(newPayload)
+    producer.send(networkTopicName, p.encode(encodingMethod))
 
 def generatePortPayload(trace):
     global myIp
@@ -60,14 +83,34 @@ def generatePortPayload(trace):
     # print("length",len(trace),"payload in", time.time() - start)
     return payload
 
-def portInsertFull(trace):
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
-    payload = generatePortPayload(trace)
-    if payload: return requests.post(url, data = payload)
+# def portInsertFull(trace):
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
+#     payload = generatePortPayload(trace)
+#     if payload: return requests.post(url, data = payload)
 
-def initializePortMappingFull(ports):
+def portInsertKafka(trace):
+    payload = generatePortPayload(trace)
+    if payload:
+        payload["client"] = socket.gethostname()
+        p = json.dumps(payload)
+        producer.send(portTopicName, p.encode(encodingMethod))
+
+# def initializePortMappingFull(ports):
+#     global port_init
+#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
+#     payload = {}
+#     for port in ports:
+#         if port not in portMapping:
+#             pid = getPidByPort(port)
+#             if pid:
+#                 portMapping[port] = pid
+#                 payload[port] = pid
+#                 port_init = True
+    
+#     if port_init: return requests.post(url, data = payload)
+
+def initializePortMappingKafka(ports):
     global port_init
-    url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
     payload = {}
     for port in ports:
         if port not in portMapping:
@@ -77,7 +120,10 @@ def initializePortMappingFull(ports):
                 payload[port] = pid
                 port_init = True
     
-    if port_init: return requests.post(url, data = payload)
+    if port_init:
+        payload["client"] = socket.gethostname()
+        p = json.dumps(payload)
+        producer.send(portTopicName, p.encode(encodingMethod))
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -111,6 +157,7 @@ def getMyIp():
     method_1 = requests.get('https://api.ipify.org/?format=json').json()['ip']
     method_2 = socket.gethostbyname(socket.gethostname())
     return [method_1, method_2]
+
 def sendData(trace):
     global myIp
     global port_init, stormSlots
@@ -120,13 +167,13 @@ def sendData(trace):
     #for key in trace:
         #if key[3] in stormSlots:
             # res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-    res = networkInsertFull(now, trace);
+    res = networkInsertKafka(now, trace);
     print('[DEBUG] send:',time.time()) if args.debug else None
     print("[DEBUG] Network Insert:",res) if args.debug else None
         #
-    if not port_init: initializePortMappingFull(stormSlots)
+    if not port_init: initializePortMappingKafka(stormSlots)
     #    res = portInsert(key[0],key[1],key[2],key[3])
-    res = portInsertFull(trace)
+    res = portInsertKafka(trace)
     #    print("[DEBUG] Port Insert:",res) if args.debug else None
 
 if __name__ == "__main__":
@@ -135,6 +182,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
+    parser.add_argument("-k", "--kafka", dest="kafka_address", help="specify kafka server address")
     parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.2.1/conf/storm.yaml')
     parser.add_argument("--zookeeper", dest="zookeeper", help="analyse also zookeeper connections")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
@@ -144,6 +192,8 @@ if __name__ == "__main__":
     
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
+    if args.kafka_address: kafkaServerAddress = args.kafka_address
+    else: kafkaServerAddress = serverAddress
     serverPort = args.server_port if args.server_port else '5000'
     if args.zookeeper: zkPort = int(args.zookeeper)
     
@@ -153,8 +203,10 @@ if __name__ == "__main__":
     start_interval = None
     init_interval = True
 
+    producer = KafkaProducer(bootstrap_servers=kafkaServerAddress)
+
     stormSlots = getStormSlots(args.storm_conf)
-    thread.start_new_thread(initializePortMappingFull, (stormSlots,))
+    thread.start_new_thread(initializePortMappingKafka, (stormSlots,))
     
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
@@ -184,42 +236,4 @@ if __name__ == "__main__":
 
                 thread.start_new_thread(sendData, (trace,))    
                 
-                trace = {} 
-
-### OLD FUNCIONS
-
-# def networkInsert(ts, sh, sp, dh, dp, pk, by):  
-#     """ deprecate """
-#     #print('conn:',sh,sp,dh,dp,'pkts:',pk,'data:',by)
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/network/insert"
-#     return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
-
-# def portInsert(sh, sp, dh, dp):
-#     """ deprecate """
-#     global myIp
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-#     port = ''
-#     pid = ''
-#     if sh == myIp or sh in localhost: port = sp
-#     elif dh == myIp or dh in localhost: port = dp
-    
-#     pid = getPidByPort(port)
-#     if pid:
-#         if port not in portMapping or portMapping[port] != pid:
-#             # sobstitute the old pid with the new one (temporary solution)  
-#             portMapping[port] = pid
-#             return requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-#         else:
-#             return 'OK'
-
-# def initializePortMapping(ports):
-#     """ deprecate """
-#     global port_init
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.1/port/insert"
-#     for port in ports:
-#         if port not in portMapping:
-#             pid = getPidByPort(port,'rcv')
-#             if pid:
-#                 portMapping[port] = pid
-#                 requests.get(url + "?port=" + str(port) + "&pid=" + str(pid))
-#                 port_init = True
+                trace = {}
