@@ -4,10 +4,10 @@
 import argparse
 import time, datetime
 import sqlite3
-from os.path import join, dirname, abspath #, isfile
+from os.path import join, dirname, abspath, getmtime #, isfile
 import sys
 from modules.stormapi import StormCollector
-import threading
+# import threading
 import _thread as thread
 
 from kafka import KafkaConsumer
@@ -20,8 +20,8 @@ networkTopicName = 'netmonitor_network'
 portTopicName = 'netmonitor_port'
 
 
-lock = threading.RLock()
-
+# lock = threading.RLock()
+lock = thread.allocate_lock()
 start_time = time.time()
 #filename = 'network_db_' + time.strftime("%d%m%y%H%M%s") + '.csv'
 db_dir = 'database/netmonitor.db'
@@ -67,26 +67,11 @@ def humansize(n, bytes=True):
 
 ### SQLite DBMS functions
 
-def init_db():
-    print("Initilizing db... ", end="")
-    db = get_db()
-    with open(schema_dir, mode='r') as f:
-        db.cursor().executescript(f.read())
-    db.commit()
-    print("OK")
-
-def insert_db(query):
-    lock.acquire()
-    db = get_db()
-    cur = db.execute(query)
-    db.commit()
-    lock.release()
-    return cur.lastrowid
 
 def connect_db():
     """Connects to the specific database."""
     # rv = sqlite3.connect(app.config['DATABASE'])
-    rv = sqlite3.connect(db_config['DATABASE'])
+    rv = sqlite3.connect(db_config['DATABASE'], isolation_level = None)
     rv.row_factory = sqlite3.Row
     return rv
 
@@ -99,6 +84,36 @@ def get_db():
     # return g.sqlite_db
 
     return connect_db()
+
+def init_db():
+    print("Initilizing db... ", end="")
+    lock.acquire()
+    db = connect_db()
+    with open(schema_dir, mode='r') as f:
+        db.cursor().executescript(f.read())
+    db.commit()
+    db.close()
+    lock.release()
+    print("OK")
+
+
+def insert_db(query):
+    lock.acquire()
+    db = connect()
+    cur = db.execute(query)
+    db.commit()
+    db.close()
+    lock.release()
+    return cur.lastrowid
+
+def multi_insert_db(listOfQueries):
+    lock.acquire()
+    db = connect_db()
+    for query in listOfQueries:
+        db.execute(query)
+    db.commit()
+    db.close()
+    lock.release()
 
 ### SQLite Queries
 
@@ -173,7 +188,7 @@ def getWorkerDataOut(addr, ports):# , time):
             AND \
             src_port in ' + str(ports) + ')'
     
-    print(query)
+    # print(query)
         # and ts > ' + str(time) + '\
 
     cur = db.execute(query)
@@ -194,7 +209,8 @@ def getAggregate(cur):
 
 
 def updateStormDb():
-    db = get_db()
+    lock.acquire()
+    db = connect_db()
 
     #### update supervisor table
     query = 'SELECT host, uptime FROM supervisor'
@@ -206,12 +222,12 @@ def updateStormDb():
                 ### update
                 query = 'UPDATE supervisor SET uptime = ' + str(s[1]) + ' WHERE host = \'' + s[0] + '\''
                 db.execute(query)
-                db.commit()
+                # db.commit()
         else:
             ### insert
             query = 'INSERT INTO supervisor (host, uptime) VALUES (\'' + s[0] + '\',' + str(s[1]) + ')'
             db.execute(query)
-            db.commit()
+            # db.commit()
             
     #### update topology table
     query = 'SELECT ID, name FROM topology'
@@ -222,7 +238,7 @@ def updateStormDb():
             ### insert
             query = 'INSERT INTO topology (ID, name) VALUES (\'' + t + '\',\'' + storm.topologies[t] + '\')'
             db.execute(query)
-            db.commit()
+            # db.commit()
 
     #### update workers table
     query = 'SELECT host, port, topoID FROM worker'
@@ -237,7 +253,7 @@ def updateStormDb():
             for couple in storm.workers[topo]:
                 query = 'INSERT INTO worker (host, port, topoID) VALUES (\'' + couple[0] + '\',\'' + str(couple[1]) + '\',\'' + topo + '\')'
                 db.execute(query)
-                db.commit()
+                # db.commit()
             
     #### update component table
     query = 'SELECT ID, topoID FROM component'
@@ -250,7 +266,7 @@ def updateStormDb():
             for c in storm.components[topo]:
                 query = 'INSERT INTO component (ID, topoID) VALUES (\'' + c + '\',\'' + topo + '\')'
                 db.execute(query)
-                db.commit()
+                # db.commit()
     
     #### update executor table 
     query = 'SELECT executor, host, port, component FROM executor'
@@ -269,12 +285,15 @@ def updateStormDb():
                             'SET host = \'' + e[1] + '\' AND port = \'' + str(e[2]) + '\' ' + \
                             'WHERE executor = \'' + e[0] + '\' AND component = \'' + component + '\'' 
                 db.execute(query)
-                db.commit()
+    
+    db.commit()
+    db.close()
+    lock.release()
 
 def checkStormDb():
     print('Retreiving data from local DB... ', end='')
     ### follow storm.reload() scheme
-    db = get_db()
+    db = connect_db()
     ### get supervisors data
     query = 'SELECT host, uptime FROM supervisor'
     cur = db.execute(query)
@@ -319,7 +338,7 @@ def reload_storm():
     now = time.time()
     res = True
     if now - storm.lastUpdate > 600: 
-        print(storm.lastUpdate - now)
+        # print(storm.lastUpdate - now)
         res = storm.reload()
         if res: 
             updateStormDb()
@@ -486,18 +505,18 @@ def getConnection(sa,sp,da,dp):
     else: return r
 
 
-def dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
-    c = getConnection(src_host, src_port, dst_host, dst_port)
-    if c and client != c[0][1]: pass
-    else:
-        if not c:
-            query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + str(client) + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
-            connId = insert_db(query)
-        else: connId = c[0][0]
-        query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
-        insert_db(query)
+# def dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts):
+#     c = getConnection(src_host, src_port, dst_host, dst_port)
+#     if c and client != c[0][1]: pass
+#     else:
+#         if not c:
+#             query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + str(client) + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
+#             connId = insert_db(query)
+#         else: connId = c[0][0]
+#         query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
+#         insert_db(query)
 
-    print ("[VERBOSE] Data write success") if args.verbose else None
+#     print ("[VERBOSE] Data write success") if args.verbose else None
 
 
 # @app.route("/api/v0.2/network/insert", methods=['POST'])
@@ -536,6 +555,9 @@ def networkInsert(payload):
         client = payload["client"]
         ts = payload["ts"]
         print("[DEBUG] received length trace:",len(request.form)) if args.verbose else None
+
+        probesQueries = []
+
         for key in payload: 
             # ts = time.time()
             if key != "ts" and key != "client":
@@ -551,7 +573,21 @@ def networkInsert(payload):
                 # print(request.form[key],v,pkts,bts)
 
                 # print(client,ts,src_host,src_port,dst_host,dst_port,pkts,bts)
-                dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
+                c = getConnection(src_host, src_port, dst_host, dst_port)
+                if c and client != c[0][1]: pass
+                else:
+                    if not c:
+                        query = 'insert into connections (client, src_addr, src_port, dst_addr, dst_port) values (\'' + str(client) + '\',\'' + src_host + '\',\'' + src_port + '\',\'' + dst_host + '\',\'' + dst_port + '\')'
+                        connId = insert_db(query)
+                        
+                    else: connId = c[0][0]
+                    query = 'insert into probes (connection, ts, pkts, bytes) values (' + str(connId) + ',\'' + str(ts) + '\',\'' + pkts + '\',\'' + bts + '\')'
+                    probesQueries.append(query)
+
+
+                multi_insert_db(probesQueries)
+                
+                # dbNetworkInsert(client, ts, src_host,src_port,dst_host,dst_port, bts, pkts)
                 
     except:
         print ("[ERROR] : Wrong payload received in network insert")
@@ -569,10 +605,12 @@ def dbPortInsert(client, port, pid):
     p = getPort(client, port)
     if not p:
         query = 'insert into port_mapping (addr, port, pid) values (\'' + client + '\',\'' + port + '\',\'' + pid + '\')'
-        connId = insert_db(query)
+        # connId = insert_db(query)
+        return query
     elif p[0][0] != pid: #update the database with the new pid (should happen only if the worker crashes)
         query = 'update port_mapping set pid = \'' + pid + '\' where addr == \'' + client + '\' and port == \'' + port + '\''
-        insert_db(query)
+        # insert_db(query)
+        return query
 
 # @app.route("/api/v0.2/port/insert", methods=['POST'])
 # def portInsert_api_v2():
@@ -594,18 +632,24 @@ def dbPortInsert(client, port, pid):
 def portInsert(payload):
     try:
         reload_storm()
-        print("here")
+        # print("here")
         client = payload["client"]
-        print("client:   ", client)
+        # print("client:   ", client)
         # ts = time.time()
+
+        portQueries = []
+
         for key in payload:
-            print("new key:    ", key)
+            # print("new key:    ", key)
             if key != "client":
                 port = key
                 pid = payload[key]
-                print(client,port,pid)
+                # print(client,port,pid)
             
-                dbPortInsert(client, port, pid)
+                portQueries.append(dbPortInsert(client, port, pid))
+        
+        multi_insert_db(portQueries)
+
     except Exception as e:
         print ("[ERROR] Wrong payload in port insert")
         print(e)
@@ -621,7 +665,7 @@ def networkKafkaConsumer(kafkaServerAddress):
         m = msg.value
         s = m.decode(encodingMethod)
         d = json.loads(s)
-        print("network received:   ",d)
+        # print("network received:   ",d)
         networkInsert(d)
 
 
@@ -631,8 +675,25 @@ def portKafkaConsumer(kafkaServerAddress):
         m = msg.value
         s = m.decode(encodingMethod)
         d = json.loads(s)
-        print("port received:   ",d)
+        # print("port received:   ",d)
         portInsert(d)
+
+def is_running(t):
+    # if is_locked() or last_mod() - time.time() < t: return True # ERROR
+    # else: return False
+    isl = is_locked()
+    lm = last_mod()
+    tim = time.time()
+    lmd = tim - lm
+    lmb = lmd < t
+    return (isl, tim, lm, lmd, t, lmb, isl or lmb) ## GOOD ONE
+
+def last_mod():
+    return getmtime(db_dir)
+
+def is_locked():
+    global lock
+    return lock.locked()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor server")
@@ -661,7 +722,13 @@ if __name__ == "__main__":
     thread.start_new_thread(portKafkaConsumer, (kafkaServerAddress,))
 
     print("Ctrl+C to kill the application")
-    while(True):
-        time.sleep(10)
+    
+    from xmlrpc.server import SimpleXMLRPCServer
+
+    server = SimpleXMLRPCServer(("0.0.0.0", 8585))
+    server.register_function(is_running, "is_running")
+    server.register_function(is_locked, "is_locked")
+    server.register_function(last_mod, "last_mod")
+    server.serve_forever()
 
     # app.run(host='0.0.0.0', port=args.port, threaded=True)

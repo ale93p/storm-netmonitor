@@ -22,7 +22,8 @@ create table probes (
     ts text,
     pkts text,
     bytes text,
-	foreign key(connection) references connections(ID)
+	foreign key(connection) references connections(ID),
+    constraint unique_connection_time unique (connection, ts)
 );
 
 create table port_mapping (
