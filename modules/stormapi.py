@@ -1,9 +1,7 @@
 # REsT requests implementation to call Apache Storm APIs
-import json
-import requests
+import time, json, requests
 from socket import gethostbyname
 from subprocess import DEVNULL, STDOUT, check_call
-import time
 
 class StormCollector():
     def __init__(self, api_addr = None, api_port = 8080):
@@ -64,7 +62,7 @@ class StormCollector():
                 
                 if all_updated:
                     self.lastUpdate = time.time()
-                    print("UPDATED:",self.lastUpdate)
+                    print("[STORM-API] Updated at ",self.lastUpdate)
                     return True
                 else:
                     return False

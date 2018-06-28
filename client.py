@@ -1,59 +1,46 @@
 #!/usr/bin/env python3
 
-import requests
-import yaml
-import json
-import time
-import argparse
-# import psutil
-import subprocess
-import _thread as thread
+import requests, yaml, json, time, argparse, subprocess
 from pathlib import Path
-from modules.tcpprobe import ProbeParser, ProbeAggregator
-import socket
+from sys import stdout
 
-from kafka import KafkaProducer
-from kafka.errors import KafkaError
+import threading as thread
+import socket, xmlrpc.client
+
+from modules.tcpprobe import ProbeParser, ProbeAggregator
+from modules.database import *
 
 producer = None
 encodingMethod = 'ascii'
 networkTopicName = 'netmonitor_network'
 portTopicName = 'netmonitor_port'
 
-localhost = ['127.0.0.1', '127.0.1.1'] 
+localhost = ['127.0.0.1', '127.0.1.1']
+this_client = socket.gethostname()
 portMapping = {}
 port_init = False
 
 stormSlots = []
 zkPort = None
 
-# def networkInsertFull(now, trace):
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/network/insert"
-#     # return requests.get(url + "?ts=" + str(ts) + "&src_host=" + str(sh) + "&src_port=" + str(sp) + "&dst_host=" + str(dh) + "&dst_port=" + str(dp) + "&pkts=" + str(pk) + "&bytes=" + str(by))
-#     payload = {}
-#     for key in trace:
-#         if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
-#             payload[key] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
-#     payload["ts"] = now
-#     return requests.post(url, data = payload)
+schema_dir = 'database/schema.sql'
+lock = thread.RLock()
 
-def networkInsertKafka(now, trace):
+def networkInsertDB(now, trace):
     payload = {}
     for key in trace:
         if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
-            payload[key] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
+            payload[str(key)] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
     payload["ts"] = now
-    payload["client"] = socket.gethostname()
-
-    newPayload = {}
-    for key in payload:
-        newPayload[str(key)] = payload[key]
-
-    p = json.dumps(newPayload)
-    producer.send(networkTopicName, p.encode(encodingMethod))
+    payload["client"] = this_client
+    
+    lock.acquire()
+    networkInsert(payload)
+    lock.release()
 
 def generatePortPayload(trace):
     global myIp
+    
     payload = {}
     already_done = []
     start = time.time()
@@ -64,15 +51,15 @@ def generatePortPayload(trace):
         # sp = key[1]
         dh = key[2] 
         # dp = key[3]
-        if sh in localhost + myIp:
+        if sh in localhost + [myIp]:
             port = key[1]
-        elif dh in localhost + myIp:
+        elif dh in localhost + [myIp]:
             port = key[3]
         
         if port not in already_done:
             already_done.append(port)
             pid = getPidByPort(port)
-            print(port,pid)
+            # print(port,pid)
             if pid:
                 if port not in portMapping or portMapping[port] != pid:
                 # sobstitute the old pid with the new one (temporary solution)  
@@ -83,33 +70,18 @@ def generatePortPayload(trace):
     # print("length",len(trace),"payload in", time.time() - start)
     return payload
 
-# def portInsertFull(trace):
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
-#     payload = generatePortPayload(trace)
-#     if payload: return requests.post(url, data = payload)
-
-def portInsertKafka(trace):
+def portInsertDB(trace):
     payload = generatePortPayload(trace)
     if payload:
-        payload["client"] = socket.gethostname()
-        p = json.dumps(payload)
-        producer.send(portTopicName, p.encode(encodingMethod))
+        payload["client"] = this_client
+        # p = json.dumps(payload)
+        # producer.send(portTopicName, p.encode(encodingMethod))
+        lock.acquire()
+        portInsert(payload)
+        lock.release()
 
-# def initializePortMappingFull(ports):
-#     global port_init
-#     url = "http://" + serverAddress + ":" + serverPort + "/api/v0.2/port/insert"
-#     payload = {}
-#     for port in ports:
-#         if port not in portMapping:
-#             pid = getPidByPort(port)
-#             if pid:
-#                 portMapping[port] = pid
-#                 payload[port] = pid
-#                 port_init = True
-    
-#     if port_init: return requests.post(url, data = payload)
 
-def initializePortMappingKafka(ports):
+def initializePortMappingDB(ports):
     global port_init
     payload = {}
     for port in ports:
@@ -121,9 +93,12 @@ def initializePortMappingKafka(ports):
                 port_init = True
     
     if port_init:
-        payload["client"] = socket.gethostname()
-        p = json.dumps(payload)
-        producer.send(portTopicName, p.encode(encodingMethod))
+        payload["client"] = this_client
+        # p = json.dumps(payload)
+        # producer.send(portTopicName, p.encode(encodingMethod))
+        lock.acquire()
+        portInsert(payload)
+        lock.release()
 
 def readTcpProbe(file):
     file.seek(0,2)
@@ -139,10 +114,7 @@ def getStormSlots(conf):
     return yaml.load(f)['supervisor.slots.ports']
 
 def getPidByPort(port):
-    # for p in psutil.net_connections('tcp'):
-    #     if p.laddr and str(p.laddr.port) == str(port):
-    #         return p.pid
-    # cmd = 'lsof -n -i :' + str(port)
+
     cmd = "ss -ptn sport = :" + str(port)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     out, err = proc.communicate()
@@ -151,30 +123,25 @@ def getPidByPort(port):
         return pid
     except:
         return None
-     
         
 def getMyIp():
-    method_1 = requests.get('https://api.ipify.org/?format=json').json()['ip']
-    method_2 = socket.gethostbyname(socket.gethostname())
-    return [method_1, method_2]
+    return socket.gethostbyname(this_client)
 
-def sendData(trace):
+def writeData(trace):
     global myIp
     global port_init, stormSlots
     now = time.time()
     
     print('[DEBUG] newT:',now) if args.debug else None
-    #for key in trace:
-        #if key[3] in stormSlots:
-            # res = networkInsert(now, key[0], key[1], key[2], key[3], trace[key].pkts, trace[key].bytes)
-    res = networkInsertKafka(now, trace);
+
+    networkInsertDB(now, trace);
     print('[DEBUG] send:',time.time()) if args.debug else None
     print("[DEBUG] Network Insert:",res) if args.debug else None
-        #
-    if not port_init: initializePortMappingKafka(stormSlots)
-    #    res = portInsert(key[0],key[1],key[2],key[3])
-    res = portInsertKafka(trace)
-    #    print("[DEBUG] Port Insert:",res) if args.debug else None
+
+    if not port_init: initializePortMappingDB(stormSlots)
+
+    portInsertDB(trace)
+
 
 if __name__ == "__main__":
     global storm_slots, myIp
@@ -182,7 +149,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
     parser.add_argument("-p", "--port", dest="server_port", help="specify server listening port")
-    parser.add_argument("-k", "--kafka", dest="kafka_address", help="specify kafka server address")
+    # parser.add_argument("-k", "--kafka", dest="kafka_address", help="specify kafka server address")
     parser.add_argument("-c", "--storm-conf", dest="storm_conf", help="specify storm configuration file path", default=str(Path.home())+'/apache-storm-1.2.1/conf/storm.yaml')
     parser.add_argument("--zookeeper", dest="zookeeper", help="analyse also zookeeper connections")
     parser.add_argument("--debug", dest="debug", help="verbose mode", action="store_true", default=False)
@@ -192,25 +159,45 @@ if __name__ == "__main__":
     
     print('[DEBUG] strt:',time.time()) if args.debug else None
     serverAddress = args.server_addr[0]
-    if args.kafka_address: kafkaServerAddress = args.kafka_address
-    else: kafkaServerAddress = serverAddress
-    serverPort = args.server_port if args.server_port else '5000'
+    # if args.kafka_address: kafkaServerAddress = args.kafka_address
+    # else: kafkaServerAddress = serverAddress
+    serverPort = args.server_port if args.server_port else '8585'
     if args.zookeeper: zkPort = int(args.zookeeper)
     
     myIp = getMyIp()
     
     trace = {}
-    start_interval = None
+    
     init_interval = True
-
-    producer = KafkaProducer(bootstrap_servers=kafkaServerAddress)
+    
+    db = db_connect()
+    init_db(db, schema_dir)
+    # producer = KafkaProducer(bootstrap_servers=kafkaServerAddress)
 
     stormSlots = getStormSlots(args.storm_conf)
-    thread.start_new_thread(initializePortMappingKafka, (stormSlots,))
-    
+    t = thread.Thread(target = initializePortMappingDB, args = (stormSlots,))
+    t.start()
+    t.join()
+
+    with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
+        while(True):
+            print("Trying to connect to {}:{}... ".format(serverAddress, serverPort), end='')
+            stdout.flush()
+            try:
+                proxy.start(this_client)
+                break
+            except Exception as e:
+                print("FAILED")
+                stdout.flush()
+                time.sleep(2)
+    print("SUCCESS")
+    stdout.flush()   
+            
+
     tcpProbeFile = open("/proc/net/tcpprobe","r")
     tcpprobe = readTcpProbe(tcpProbeFile)
-    
+
+
     for probe in tcpprobe:
         
         p = ProbeParser(probe)
@@ -224,16 +211,52 @@ if __name__ == "__main__":
                 trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
         
         now = time.time()
+    
+
         if init_interval:
             if len(trace) >= 1: 
                 start_interval = now
                 print('[DEBUG] frst:',start_interval, time.time()) if args.debug else None
                 init_interval = not init_interval
-	
+
         elif now - start_interval >= 10:
                 start_interval = now
                 print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
-                thread.start_new_thread(sendData, (trace,))    
-                
+                # thread.start_new_thread(sendData, (trace,))    
+                t = thread.Thread(target = writeData, args = (trace,))    
+                t.start()
+
                 trace = {}
+
+                with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
+                    if(proxy.is_test_finished()):
+                        break
+        
+        
+
+### Understand that test is finished
+
+start_waiting = time.time()
+active_threads = thread.active_count()
+while(active_threads > 1):
+    time.sleep(2)
+    active_threads_now = thread.active_count()
+    if active_threads_now != active_threads:
+        active_threads = active_threads_now
+        start_waiting = time.time()
+
+    if time.time() - start_waiting > 60:
+        print("[ERROR] Reached timeout. The threads won't be waited")
+        break
+
+
+fileDump = "database/" + this_client + "_dump.sql"
+
+db_dump(fileDump)
+db.close()
+
+with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
+    with open(fileDump, "rb") as handle:
+        binary_data = xmlrpc.client.Binary(handle.read())
+    proxy.end(this_client, binary_data)
