@@ -7,7 +7,7 @@ from sys import stdout
 import threading as thread
 import socket, xmlrpc.client
 
-from modules.tcpprobe import ProbeParser, ProbeAggregator
+from modules.network_tools import ConntrackParser, ProbeAggregator
 from modules.database import *
 
 producer = None
@@ -47,13 +47,8 @@ def generatePortPayload(trace):
     port = ''
     pid = ''
     for key in trace:
-        sh = key[0]
-        # sp = key[1]
         dh = key[2] 
-        # dp = key[3]
-        if sh in localhost + [myIp]:
-            port = key[1]
-        elif dh in localhost + [myIp]:
+        if dh in localhost + [myIp]:
             port = key[3]
         
         if port not in already_done:
@@ -100,14 +95,14 @@ def initializePortMappingDB(ports):
         portInsert(payload)
         lock.release()
 
-def readTcpProbe(file):
-    file.seek(0,2)
-    while True:
-        line = file.readline()
-        if not line:
-            time.sleep(0.1)
-            continue
-        yield line
+# def readTcpProbe(file):
+#     file.seek(0,2)
+#     while True:
+#         line = file.readline()
+#         if not line:
+#             time.sleep(0.1)
+#             continue
+#         yield line
 
 def getStormSlots(conf):
     f = open(conf, 'r')
@@ -168,7 +163,7 @@ if __name__ == "__main__":
     
     trace = {}
     
-    init_interval = True
+    # init_interval = True
     
     db = db_connect()
     init_db(db, schema_dir)
@@ -191,47 +186,50 @@ if __name__ == "__main__":
                 stdout.flush()
                 time.sleep(2)
     print("SUCCESS")
-    stdout.flush()   
+    stdout.flush()
             
 
-    tcpProbeFile = open("/proc/net/tcpprobe","r")
-    tcpprobe = readTcpProbe(tcpProbeFile)
+    # tcpProbeFile = open("/proc/net/tcpprobe","r")
+    # tcpprobe = readTcpProbe(tcpProbeFile)
 
 
-    for probe in tcpprobe:
+    # for probe in tcpprobe:
+    ports_to_filter = stormSlots + [zkPort]
+    p = ConntrackParser(ports_to_filter)
+    print(p.ports)
+
+    start_interval = time.time()
+
+    while True:
         
-        p = ProbeParser(probe)
-        if p.sp in stormSlots + [zkPort] or p.dp in stormSlots + [zkPort]: #ZooKeeper:
-        # Filter out ACK direction
-        #if p.dp in stormSlots:    
-            if (p.sh, p.sp, p.dh, p.dp) not in trace:
-                trace[p.sh, p.sp, p.dh, p.dp] = ProbeAggregator()
-                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
-            else:
-                trace[p.sh, p.sp, p.dh, p.dp].addPacket(int(p.by))
+        # p = ProbeParser(probe)
         
         now = time.time()
-    
 
-        if init_interval:
-            if len(trace) >= 1: 
-                start_interval = now
-                print('[DEBUG] frst:',start_interval, time.time()) if args.debug else None
-                init_interval = not init_interval
+        if now - start_interval >= 10:
 
-        elif now - start_interval >= 10:
-                start_interval = now
-                print("[DEBUG] Sending data at ", start_interval) if args.debug else None
+            start_interval = now
+            print("[DEBUG] Sending data at ", start_interval) if args.debug else None
 
-                # thread.start_new_thread(sendData, (trace,))    
+            # thread.start_new_thread(sendData, (trace,))
+            conntrackCommand = "conntrack -L -z"
+            conntrack_output = p.parseOutput(subprocess.check_output(conntrackCommand.split())) 
+
+            # print(conntrack_output)
+            if conntrack_output:
+                trace = {}
+                for connection in conntrack_output:
+                    ### FILTER BY INCOMING PACKETS ?
+                    #connection['dst'] == myIp and 
+                    if 'packets' in connection and int(connection['packets']) > 0:
+                        trace[connection['src'],int(connection['sport']),connection['dst'],int(connection['dport'])] = ProbeAggregator(pkts = connection['packets'], bts = connection['bytes'])
+                
                 t = thread.Thread(target = writeData, args = (trace,))    
                 t.start()
 
-                trace = {}
-
-                with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
-                    if(proxy.is_test_finished()):
-                        break
+            with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
+                if(proxy.is_test_finished()):
+                    break
         
         
 
