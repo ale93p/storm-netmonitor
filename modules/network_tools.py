@@ -52,14 +52,17 @@ class ConntrackParser:
     ### http://conntrack-tools.netfilter.org/manual.html#requirements
     ### /bin/echo "1" > /proc/sys/net/netfilter/nf_conntrack_acct
 
-    def __init__(self, ports):
+    def __init__(self, ip, ports):
+        self.myip = ip
         self.ports = ports
     
     def parseOutput(self, output):
         out_lines = self.splitOutput(output)
         out_dict = self.createDictionary(out_lines)
         # tcp_connections = filterByProtocol(out_lines, 'tcp')
-        filtered_connections = self.filterByPorts(out_dict, self.ports)
+        filtered_connections = self.filterByDstAddr(out_dict, self.myip)
+        filtered_connections = self.filterByPorts(filtered_connections, self.ports)
+        
         return filtered_connections
 
     def splitOutput(self, output):
@@ -81,6 +84,7 @@ class ConntrackParser:
                             split = field.split('=')
                             if(split[0] not in line_dict): line_dict[split[0]] = split[1]
                             else: sec_line_dict[split[0]] = split[1]
+
                     out_dict.append(line_dict)
                     if(sec_line_dict): 
                         sec_line_dict['protocol'] = line[0]
@@ -93,6 +97,14 @@ class ConntrackParser:
     def filterByPorts(self, connections_dict, ports):
         filtered = []
         for connection in connections_dict:
-            if ('sport' in connection and int(connection['sport']) in ports) or ('dport' in connection and int(connection['dport']) in ports):
+            if ('dport' in connection and int(connection['dport']) in ports):
+            # if ('sport' in connection and int(connection['sport']) in ports) or ('dport' in connection and int(connection['dport']) in ports):
+                filtered.append(connection)
+        return filtered
+    
+    def filterByDstAddr(self, connections_dict, ip):
+        filtered = []
+        for connection in connections_dict:
+            if ('dst' in connection and connection['dst'] in ip):
                 filtered.append(connection)
         return filtered
