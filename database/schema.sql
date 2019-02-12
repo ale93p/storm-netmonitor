@@ -47,7 +47,8 @@ create table worker (
     host text,
     port text,
     topoID text,
-    primary key(host, port),
+    last_seen text,
+    primary key(host, port, topoID),
     foreign key(topoID) references topology(ID)
 );
 
@@ -58,10 +59,12 @@ create table component(
 );
 
 create table executor (
-    executor text primary key,
+    executor text,
+    time text,
     host text,
     port text,
     component text,
     foreign key (host,port) references worker(host, port),
-    foreign key (component) references component(ID)
+    foreign key (component) references component(ID),
+    primary key (executor, time)
 );

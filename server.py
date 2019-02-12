@@ -68,6 +68,10 @@ def is_running():
     global clientsList
     return not len(clientsList) == 0
 
+def who_is():
+    global clientsList
+    return clientsList
+
 def start(client):
     global clientsList
     clientsList.append(client)
@@ -81,13 +85,13 @@ def end(client, arg):
     with open("database/{}_dump.sql".format(client), "wb") as handle:
         handle.write(arg.data)
 
-    print(client, clientsList)
+    # print(client, clientsList)
     if len(clientsList) == 1 and client in clientsList:
         global db
         db_dump("database/{}_dump.sql".format(socket.gethostname()))
 
     clientsList.remove(client)
-    print(client, clientsList)
+    # print(client, clientsList)
     print("[INFO] '{}' has completed".format(client))
     stdout.flush()
     
@@ -105,6 +109,7 @@ def is_test_finished():
 def start_xmlrpc_server():
     server = SimpleXMLRPCServer(("0.0.0.0", 8585))
     server.register_function(is_running, "is_running")
+    server.register_function(who_is, "who_is")
     server.register_function(start, "start")
     server.register_function(end, "end")
     server.register_function(is_test_finished, "is_test_finished")

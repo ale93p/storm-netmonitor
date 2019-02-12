@@ -16,7 +16,7 @@ networkTopicName = 'netmonitor_network'
 portTopicName = 'netmonitor_port'
 
 localhost = ['127.0.0.1', '127.0.1.1']
-this_client = socket.gethostname()
+
 portMapping = {}
 port_init = False
 
@@ -24,19 +24,19 @@ stormSlots = []
 zkPort = None
 
 schema_dir = 'database/schema.sql'
-lock = thread.RLock()
+netLock = thread.RLock()
+portLock = thread.RLock()
 
 def networkInsertDB(now, trace):
     payload = {}
     for key in trace:
         if key[3] in stormSlots + [zkPort] or key[1] == zkPort:
             payload[str(key)] = ",".join([str(trace[key].bytes), str(trace[key].pkts)])
+    # print('length payload:', len(payload))
     payload["ts"] = now
-    payload["client"] = this_client
+    payload["client"] = this_client()
     
-    lock.acquire()
-    networkInsert(payload)
-    lock.release()
+    return payload
 
 def generatePortPayload(trace):
     global myIp
@@ -48,9 +48,10 @@ def generatePortPayload(trace):
     pid = ''
     for key in trace:
         dh = key[2] 
-        if dh in localhost + [myIp]:
-            port = key[3]
-        
+        # if dh in localhost + [myIp]:
+        #     port = key[3]
+        port = key[3]
+
         if port not in already_done:
             already_done.append(port)
             pid = getPidByPort(port)
@@ -68,13 +69,11 @@ def generatePortPayload(trace):
 def portInsertDB(trace):
     payload = generatePortPayload(trace)
     if payload:
-        payload["client"] = this_client
+        print('this_client',this_client(),flush=True)
+        payload["client"] = this_client()
         # p = json.dumps(payload)
         # producer.send(portTopicName, p.encode(encodingMethod))
-        lock.acquire()
-        portInsert(payload)
-        lock.release()
-
+        return payload
 
 def initializePortMappingDB(ports):
     global port_init
@@ -87,13 +86,12 @@ def initializePortMappingDB(ports):
                 payload[port] = pid
                 port_init = True
     
-    if port_init:
-        payload["client"] = this_client
+    if payload: 
+        print('this_client',this_client())
+        payload["client"] = this_client()
         # p = json.dumps(payload)
         # producer.send(portTopicName, p.encode(encodingMethod))
-        lock.acquire()
-        portInsert(payload)
-        lock.release()
+    return payload
 
 # def readTcpProbe(file):
 #     file.seek(0,2)
@@ -120,26 +118,45 @@ def getPidByPort(port):
         return None
         
 def getMyIp():
-    return socket.gethostbyname(this_client)
+    return socket.gethostbyname(this_client())
 
 def writeData(trace):
     global myIp
     global port_init, stormSlots
     now = time.time()
     
-    print('[DEBUG] newT:',now) if args.debug else None
+    
+    if not port_init:
+        initPortPayload = initializePortMappingDB(stormSlots)
+        if initPortPayload:
+            portLock.acquire()
+            try:
+                portInsert(initPortPayload)
+            except:
+                print('ERROR [init]:', initPortPayload)
+            portLock.release()
 
-    networkInsertDB(now, trace);
-    print('[DEBUG] send:',time.time()) if args.debug else None
-    print("[DEBUG] Network Insert:",res) if args.debug else None
+    portPayload = portInsertDB(trace)
+    if portPayload:
+        portLock.acquire()
+        try:
+            portInsert(portPayload)
+        except:       
+            print('ERROR:',portPayload)
+        portLock.release()
 
-    if not port_init: initializePortMappingDB(stormSlots)
+    netPayload = networkInsertDB(now, trace);
+    netLock.acquire()
+    try:
+        networkInsert(netPayload)
+    except:
+        print('ERROR:', netPayload)
+    netLock.release()
 
-    portInsertDB(trace)
-
-
+def this_client():
+    return socket.gethostname()
 if __name__ == "__main__":
-    global storm_slots, myIp
+    global myIp
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Start netmonitor client")
     parser.add_argument("server_addr", nargs=1, type=str, help="specify server IP address")
@@ -169,7 +186,9 @@ if __name__ == "__main__":
     init_db(db, schema_dir)
     # producer = KafkaProducer(bootstrap_servers=kafkaServerAddress)
 
+    print(args.storm_conf)
     stormSlots = getStormSlots(args.storm_conf)
+    print(stormSlots)
     t = thread.Thread(target = initializePortMappingDB, args = (stormSlots,))
     t.start()
     t.join()
@@ -179,7 +198,7 @@ if __name__ == "__main__":
             print("Trying to connect to {}:{}... ".format(serverAddress, serverPort), end='')
             stdout.flush()
             try:
-                proxy.start(this_client)
+                proxy.start(this_client())
                 break
             except Exception as e:
                 print("FAILED")
@@ -195,8 +214,8 @@ if __name__ == "__main__":
 
     # for probe in tcpprobe:
     ports_to_filter = stormSlots + [zkPort]
-    p = ConntrackParser(ports_to_filter)
-    print(p.ports)
+    p = ConntrackParser(localhost + [myIp], ports_to_filter)
+    # print(p.ports)
 
     start_interval = time.time()
 
@@ -217,6 +236,8 @@ if __name__ == "__main__":
 
             # print(conntrack_output)
             if conntrack_output:
+                # print('length conntrack:', len(conntrack_output))
+
                 trace = {}
                 for connection in conntrack_output:
                     ### FILTER BY INCOMING PACKETS ?
@@ -224,6 +245,7 @@ if __name__ == "__main__":
                     if 'packets' in connection and int(connection['packets']) > 0:
                         trace[connection['src'],int(connection['sport']),connection['dst'],int(connection['dport'])] = ProbeAggregator(pkts = connection['packets'], bts = connection['bytes'])
                 
+                # print('length trace:', len(trace))
                 t = thread.Thread(target = writeData, args = (trace,))    
                 t.start()
 
@@ -235,6 +257,7 @@ if __name__ == "__main__":
 
 ### Understand that test is finished
 
+print("Waiting threads to finish")
 start_waiting = time.time()
 active_threads = thread.active_count()
 while(active_threads > 1):
@@ -244,12 +267,15 @@ while(active_threads > 1):
         active_threads = active_threads_now
         start_waiting = time.time()
 
+        print("Active threads: {}".format(active_threads - 1))
+
     if time.time() - start_waiting > 60:
         print("[ERROR] Reached timeout. The threads won't be waited")
         break
 
 
-fileDump = "database/" + this_client + "_dump.sql"
+print("Start dumping file")
+fileDump = "database/" + this_client() + "_dump.sql"
 
 db_dump(fileDump)
 db.close()
@@ -257,4 +283,6 @@ db.close()
 with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
     with open(fileDump, "rb") as handle:
         binary_data = xmlrpc.client.Binary(handle.read())
-    proxy.end(this_client, binary_data)
+    proxy.end(this_client(), binary_data)
+
+print("finished execution")
