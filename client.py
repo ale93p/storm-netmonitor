@@ -89,6 +89,7 @@ def initializePortMappingDB(ports):
     if payload: 
         print('this_client',this_client())
         payload["client"] = this_client()
+
         # p = json.dumps(payload)
         # producer.send(portTopicName, p.encode(encodingMethod))
     return payload
@@ -124,7 +125,6 @@ def writeData(trace):
     global myIp
     global port_init, stormSlots
     now = time.time()
-    
     
     if not port_init:
         initPortPayload = initializePortMappingDB(stormSlots)
@@ -283,6 +283,7 @@ db.close()
 with xmlrpc.client.ServerProxy("http://{}:{}/".format(serverAddress, serverPort)) as proxy:
     with open(fileDump, "rb") as handle:
         binary_data = xmlrpc.client.Binary(handle.read())
+
     proxy.end(this_client(), binary_data)
 
 print("finished execution")
