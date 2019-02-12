@@ -1,5 +1,8 @@
 # netmonitor for Storm #
 
+![last-tag](https://img.shields.io/github/tag-pre/ale93p/storm-netmonitor.svg?style=flat)
+![python-version](https://img.shields.io/badge/python-3.5%2B-yellow.svg)
+
 netmonitor for Storm helps you to collect network statistics from your Storm cluster
 
 ### Dependencies ###
