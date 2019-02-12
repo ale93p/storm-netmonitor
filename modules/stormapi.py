@@ -1,9 +1,7 @@
 # REsT requests implementation to call Apache Storm APIs
-import json
-import requests
+import time, json, requests
 from socket import gethostbyname
 from subprocess import DEVNULL, STDOUT, check_call
-import time
 
 class StormCollector():
     def __init__(self, api_addr = None, api_port = 8080):
@@ -14,6 +12,8 @@ class StormCollector():
         self.lastConnected = 0
         self.lastUpdate = 0
 
+
+        self.sys_metrics = True
         self.baseUrl = 'http://' + str(api_addr) + ':' + str(api_port) + '/api/v1'
         self.topoUrl = self.baseUrl + '/topology'
         self.summUrl = self.topoUrl + '/summary'
@@ -64,7 +64,7 @@ class StormCollector():
                 
                 if all_updated:
                     self.lastUpdate = time.time()
-                    print("UPDATED:",self.lastUpdate)
+                    print("[STORM-API] Updated at ",self.lastUpdate)
                     return True
                 else:
                     return False
@@ -151,7 +151,7 @@ class StormCollector():
 
     def getTopologyComponents(self, topoId):
         """ Returns empty list if no topology found """
-        url = self.topoUrl + "/" + topoId + "/metrics"
+        url = self.topoUrl + "/" + topoId + "/metrics?sys=" +  str(self.sys_metrics)
         topoComponents = []
         res = requests.get(url)
         jsonData = res.json()
@@ -169,7 +169,7 @@ class StormCollector():
         '''Returns list of all the executors in the topology'''
         topoExecutors = {}
         for c in self.components[topoId]:
-            url = self.topoUrl + "/" + topoId + '/component/' + c
+            url = self.topoUrl + "/" + topoId + '/component/' + c + '?sys=' + str(self.sys_metrics)
             res = requests.get(url)
             jsonData = res.json()
             topoExecutors[c] = []
@@ -198,7 +198,7 @@ class StormCollector():
         
         for c in self.components[topoId]:
             #print(c)
-            url = self.topoUrl + "/" + topoId + '/component/' + c
+            url = self.topoUrl + "/" + topoId + '/component/' + c + '?sys=' + str(self.sys_metrics)
             #print(url)
             componentDetails = requests.get(url)
             jsonData = componentDetails.json()
