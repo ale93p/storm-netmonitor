@@ -21,7 +21,7 @@
 
 ### Features ###
 
-- [x] Conntrack [[2](http://conntrack-tools.netfilter.org/)] output parsing to retreive network metrics
+- [x] Conntrack [[3](http://conntrack-tools.netfilter.org/)] output parsing to retreive network metrics
 - [x] In-memory SQLite3 to store metrics
 - [x] XMLRCP module to send and aggregate results on server
 
