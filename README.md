@@ -11,8 +11,7 @@
 
 * following modules on clients:
   
-    * requests
-    * xmlrpc
+    * requests: `pip3 install requests`
     * PyYAML: [here](https://github.com/yaml/pyyaml)
 
 ### Features ###
