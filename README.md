@@ -12,7 +12,7 @@
 * following modules on clients:
   
     * requests: `pip3 install requests`
-    * PyYAML [2](https://github.com/yaml/pyyaml):
+    * PyYAML [[2](https://github.com/yaml/pyyaml)]:
         ```
         git clone https://github.com/yaml/pyyaml
         cd pyyaml
